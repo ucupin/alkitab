@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cari Ayat Alkitab Sesuai Mood</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark background */
+            color: #f3f4f6; /* Light text */
+            overflow-x: hidden; /* Hide horizontal scrollbars only */
+            overflow-y: auto; /* Allow vertical scroll if content is long */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Place canvas behind other content */
+        }
+        .content-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 1; /* Ensure content is above particles */
+            padding: 1rem;
+        }
+        .mood-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            max-width: 600px; /* Batasi lebar grid */
+            margin: 0 auto;
+        }
+        @media (min-width: 640px) {
+            .mood-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        .mood-button {
+            background-color: #1f2937; /* Darker gray for buttons */
+            color: #d1d5db; /* Light gray text for buttons */
+            padding: 1.5rem;
+            border-radius: 0.75rem; /* Rounded corners */
+            text-align: center;
+            font-size: 1.125rem; /* Large text */
+            font-weight: 600; /* Semi-bold */
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid #374151; /* Subtle border */
+        }
+        .mood-button:hover {
+            background-color: #374151; /* Even darker on hover */
+            color: #e5e7eb;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+        .mood-button i {
+            margin-bottom: 0.5rem;
+            font-size: 2.5rem; /* Larger icons */
+            display: block; /* Ensure icon takes its own line */
+        }
+
+        /* Styling for the verse display container */
+        #verseDisplayContainer {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #verseDisplayContainer.hidden {
+            display: none;
+            animation: fadeOut 0.5s ease-out forwards;
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex flex-col min-h-screen">
+    <canvas id="particle-canvas"></canvas>
+
+    <header class="text-center py-8">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-400 mb-4 drop-shadow-lg">
+            Cari Ayat Alkitab Sesuai Mood Kamu
+        </h1>
+        <p class="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto px-4">
+            Temukan penghiburan, kekuatan, dan inspirasi dari firman Tuhan yang sesuai dengan perasaanmu saat ini.
+        </p>
+    </header>
+
+    <main class="flex-grow flex flex-col items-center justify-center p-4">
+        <section id="mood-selection" class="w-full max-w-4xl">
+            <h2 class="text-2xl sm:text-3xl font-bold text-center text-gray-200 mb-8">Pilih Mood-mu:</h2>
+            <div class="mood-grid">
+                <button class="mood-button" data-mood="sedih">
+                    <i class="fa-solid fa-face-sad-cry"></i>
+                    Sedih
+                </button>
+                <button class="mood-button" data-mood="duka">
+                    <i class="fa-solid fa-face-sad-tear"></i>
+                    Duka
+                </button>
+                <button class="mood-button" data-mood="sukacita">
+                    <i class="fas fa-laugh-beam"></i>
+                    Sukacita
+                </button>
+                <button class="mood-button" data-mood="bahagia">
+                    <i class="fa-solid fa-face-grin-stars"></i>
+                    Bahagia
+                </button>
+                <button class="mood-button" data-mood="takut">
+                    <i class="fa-solid fa-face-tired"></i>
+                    Takut
+                </button>
+                <button class="mood-button" data-mood="gentar">
+                    <i class="fa-solid fa-face-frown"></i>
+                    Gentar
+                </button>
+                <button class="mood-button" data-mood="cinta">
+                    <i class="fas fa-heart"></i>
+                    Cinta
+                </button>
+                <button class="mood-button" data-mood="kasih">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    Kasih
+                </button>
+                <button class="mood-button" data-mood="marah">
+                    <i class="fa-solid fa-face-meh"></i>
+                    Marah
+                </button>
+                <button class="mood-button" data-mood="murka">
+                    <i class="fas fa-angry"></i>
+                    Murka
+                </button>
+                </div>
+        </section>
+
+        <div id="verseDisplayContainer" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center p-4 z-50">
+            <div class="bg-gray-800 p-8 rounded-lg shadow-xl max-w-lg w-full text-center relative">
+                <button id="closeVerseDisplayBtn" class="absolute top-3 right-3 text-gray-400 hover:text-white text-3xl leading-none focus:outline-none">
+                    &times;
+                </button>
+                <p id="verseReference" class="text-xl font-semibold mb-4 text-gray-200"></p>
+                <p id="verseText" class="text-lg leading-relaxed text-gray-300"></p>
+
+                <div class="mt-6 flex justify-center space-x-4">
+                    <button id="otherVerseBtn" class="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">
+                        Ayat Lain
+                    </button>
+                    <button id="showExplanationBtn" class="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-300 shadow-md">
+                        Penjelasan
+                    </button>
+                    </div>
+
+                <div id="explanationContainer" class="hidden mt-6 text-left p-4 bg-gray-700 rounded-lg">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-2">Penjelasan:</h3>
+                    <p id="explanationText" class="text-gray-300 text-base leading-relaxed mb-4"></p>
+                    <h3 class="text-lg font-semibold text-gray-200 mb-2">Pesan Moral:</h3>
+                    <p id="moralMessageText" class="text-gray-300 text-base leading-relaxed"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="text-center py-6 text-gray-500 text-sm">
+        <p>&copy; 2025 Dibuat Oleh Yusuf Imanuel</p>
+    </footer>
+
+    <script>
+        // Particle background logic
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        function Particle(x, y, size, speedX, speedY, color) {
+            this.x = x;
+            this.y = y;
+            this.size = size;
+            this.speedX = speedX;
+            this.speedY = speedY;
+            this.color = color;
+        }
+
+        Particle.prototype.update = function() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+
+            if (this.x < 0 || this.x > canvas.width) {
+                this.speedX *= -1;
+            }
+            if (this.y < 0 || this.y > canvas.height) {
+                this.speedY *= -1;
+            }
+        };
+
+        Particle.prototype.draw = function() {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        };
+
+        function initParticles() {
+            particles = [];
+            const numberOfParticles = Math.floor((canvas.width * canvas.height) / 9000); // Adjust density
+            for (let i = 0; i < numberOfParticles; i++) {
+                const size = Math.random() * 2 + 0.5;
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const speedX = (Math.random() * 0.5) - 0.25;
+                const speedY = (Math.random() * 0.5) - 0.25;
+                const color = `rgba(100, 116, 139, ${Math.random() * 0.5 + 0.2})`; // Slate-400 like color with transparency
+                particles.push(new Particle(x, y, size, speedX, speedY, color));
+            }
+        }
+
+        function animateParticles() {
+            requestAnimationFrame(animateParticles);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                // Draw lines between close particles
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 100) { // Adjust connection distance
+                        ctx.strokeStyle = `rgba(100, 116, 139, ${1 - (distance / 100)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        initParticles();
+        animateParticles();
+
+        // Alkitab content logic
+        const verses = {
+            sedih: [
+                {
+                    ref: "Markus 14:19",
+                    text: "Maka sedihlah hati mereka dan seorang demi seorang berkata kepada-Nya: 'Bukan aku, ya Tuhan?'",
+                    explanation: "Ayat ini menceritakan bagaimana para murid Yesus merasa sangat sedih setelah mendengar bahwa salah satu di antara mereka akan mengkhianati Yesus.",
+                    moralMessage: "Kita harus selalu introspeksi diri, jangan cepat menyalahkan orang lain, dan tetap rendah hati. Kesedihan yang dirasakan para murid menunjukkan empati dan ketulusan hati."
+                },
+                {
+                    ref: "Lukas 22:62",
+                    text: "Lalu ia pergi ke luar dan menangis dengan sedihnya.",
+                    explanation: "Ayat ini menceritakan Petrus yang setelah menyangkal Yesus, pergi ke luar dan menangis dengan sangat sedih. Ini menunjukkan penyesalan mendalam atas kesalahan yang diperbuat.",
+                    moralMessage: "Penyesalan dan tangisan atas kesalahan adalah awal dari pertobatan. Kita harus berani mengakui kesalahan dan berusaha memperbaiki diri."
+                },
+                {
+                    ref: "Lukas 18:23",
+                    text: "Mendengar itu sangat sedihlah ia, sebab ia sangat kaya.",
+                    explanation: "Ayat ini menceritakan seorang muda yang kaya raya menjadi sangat sedih ketika Yesus meminta dia menjual hartanya dan mengikuti-Nya. Dia tidak sanggup melepaskan hartanya.",
+                    moralMessage: "Kekayaan bisa menjadi penghalang untuk mengikuti kehendak Tuhan. Kita harus siap melepaskan apa yang kita cintai demi hal yang lebih baik."
+                },
+                {
+                    ref: "Matius 26:22",
+                    text: "Maka sedihlah hati mereka dan seorang demi seorang berkata kepada-Nya: 'Bukan aku, ya Tuhan?'",
+                    explanation: "Para murid merasa sangat sedih dan bertanya satu per satu kepada Yesus, “Bukan aku, ya Tuhan?”, karena tidak ingin menjadi pengkhianat.",
+                    moralMessage: "Selalu introspeksi diri, jangan cepat merasa benar sendiri, dan tetap rendah hati terhadap sesama."
+                },
+                {
+                    ref: "Matius 19:22",
+                    text: "Ketika orang muda itu mendengar perkataan itu, ia pergi dengan sedih, sebab banyak hartanya.",
+                    explanation: "Ayat ini menceritakan tentang orang muda kaya yang menjadi sedih karena tidak sanggup melepaskan hartanya demi mengikuti Yesus.",
+                    moralMessage: "Kekayaan materi bisa membuat kita sulit melepaskan kenyamanan duniawi demi mengikuti panggilan Tuhan. Kita harus berani memilih prioritas yang benar."
+                },
+                {
+                    ref: "Roma 9:2",
+                    text: "bahwa aku sangat berduka cita dan selalu bersedih hati.",
+                    explanation: "Rasul Paulus mengatakan bahwa ia sangat berduka cita dan selalu bersedih hati, terutama karena banyak orang Israel yang belum percaya kepada Yesus.",
+                    moralMessage: "Empati dan kepedulian terhadap orang lain sangat penting. Kesedihan yang tulus bisa menjadi motivasi untuk berdoa dan melayani sesama."
+                },
+                {
+                    ref: "2 Korintus 2:5",
+                    text: "Karena itu kalau ada seorang yang menyebabkan kesedihan, maka bukanlah hatiku yang disedihkannya, melainkan hati kamu sekalian, atau setidak-tidaknya sebagian dari kamu, ini kukatakan supaya jangan terlalu berat menekan kamu.",
+                    explanation: "Paulus membahas tentang kesedihan yang disebabkan oleh seseorang, tetapi ia menekankan bahwa bukan hatinya yang paling disedihkan, melainkan hati jemaat.",
+                    moralMessage: "Kita harus berhati-hati dalam berperilaku agar tidak menyebabkan kesedihan bagi orang lain. Jika ada masalah, selesaikan dengan kasih dan pengertian."
+                },
+                {
+                    ref: "Markus 10:22",
+                    text: "Mendengar perkataan itu ia menjadi kecewa, lalu pergi dengan sedih, sebab banyak hartanya.",
+                    explanation: "Ayat ini menceritakan orang yang sedih karena tidak sanggup melepaskan kekayaannya demi mengikuti Yesus.",
+                    moralMessage: "Kekayaan duniawi bisa menjadi penghalang untuk hidup sesuai kehendak Tuhan. Kita harus memilih prioritas yang benar."
+                },
+                {
+                    ref: "Ratapan 3:5",
+                    text: "Aku dikepung-Nya dan dikelilingi-Nya dengan kepahitan dan kesusahan.",
+                    explanation: "Ayat ini menggambarkan bagaimana Tuhan mengelilingi penulis dengan kesedihan dan kesusahan, sebagai bagian dari proses kehidupan.",
+                    moralMessage: "Kesedihan dan kesusahan adalah bagian dari hidup yang bisa membuat kita lebih kuat dan berserah kepada Tuhan."
+                },
+                {
+                    ref: "2 Korintus 7:8",
+                    text: "Sebab sekalipun aku menyedihkan hatimu dengan suratku itu, namun aku tidak menyesalkannya. Sekalipun semula aku menyesalinya, karena aku lihat, bahwa surat itu untuk sementara waktu menyedihkan hatimu,",
+                    explanation: "Paulus mengakui bahwa suratnya pernah membuat jemaat di Korintus sedih, tetapi ia tidak menyesal karena kesedihan itu membawa pertobatan.",
+                    moralMessage: "Terkadang teguran yang menyakitkan diperlukan agar kita sadar dan bertobat. Niat baik dan kasih harus tetap menjadi dasar dalam menegur sesama."
+                }
+            ],
+            duka: [
+                {
+                    ref: "Pengkhotbah 7:2",
+                    text: "Pergi ke rumah duka lebih baik dari pada pergi ke rumah pesta, karena di sanalah kesudahan setiap manusia; hendaknya orang yang hidup memperhatikannya.",
+                    explanation: "Ayat ini menasehati bahwa lebih baik pergi ke rumah duka daripada ke rumah pesta, karena di rumah duka kita diingatkan tentang akhir kehidupan setiap manusia. Ini mengajak kita untuk menyadari kefanaan hidup dan pentingnya introspeksi diri.",
+                    moralMessage: "Kita harus selalu mengingat bahwa hidup ini sementara. Menghadiri rumah duka mengajarkan kita untuk rendah hati, bersyukur, dan memanfaatkan waktu hidup dengan bijak."
+                },
+                {
+                    ref: "Yeremia 8:18",
+                    text: "Sukar bagiku mengatasi kedukaan, hatiku sakit pedih.",
+                    explanation: "Nabi Yeremia mengungkapkan kedukaan yang sangat mendalam dan hati yang sakit pedih karena keadaan bangsanya. Ini menggambarkan kepedihan hati yang tak tersembuhkan oleh hal-hal duniawi.",
+                    moralMessage: "Saat mengalami duka yang mendalam, penting untuk tetap percaya bahwa Tuhan memahami dan bisa memberikan kekuatan serta penghiburan di tengah penderitaan."
+                },
+                {
+                    ref: "Mazmur 119:28",
+                    text: "Jiwaku menangis karena duka hati; teguhkanlah aku sesuai dengan firman-Mu.",
+                    explanation: "Pemazmur mengungkapkan bahwa jiwanya menangis karena duka hati, dan memohon agar Tuhan meneguhkan dia sesuai firman-Nya.",
+                    moralMessage: "Di saat duka dan kelemahan, firman Tuhan adalah sumber kekuatan dan penghiburan. Kita harus selalu mencari Tuhan dan firman-Nya untuk mendapatkan keteguhan hati."
+                },
+                {
+                    ref: "Amsal 14:13",
+                    text: "Di balik tertawa hati dapat merana, dan kesukaan dapat berakhir dengan kedukaan.",
+                    explanation: "Ayat ini mengingatkan bahwa di balik tawa bisa ada hati yang merana, dan kesukaan pun bisa berakhir dengan kedukaan.",
+                    moralMessage: "Penampilan luar tidak selalu mencerminkan keadaan hati. Kita harus peka terhadap perasaan diri sendiri dan orang lain, serta tidak menilai hanya dari apa yang tampak di permukaan."
+                },
+                {
+                    ref: "Mazmur 107:39",
+                    text: "Tetapi apabila mereka menjadi berkurang dan membungkuk karena tekanan celaka dan duka,",
+                    explanation: "Ayat ini menggambarkan bagaimana orang bisa menjadi berkurang dan membungkuk karena tekanan celaka dan duka.",
+                    moralMessage: "Duka dan tekanan hidup bisa membuat seseorang lemah, tetapi Tuhan bisa mengangkat mereka kembali. Kita harus tetap berharap kepada Tuhan di tengah kesulitan."
+                },
+                {
+                    ref: "2 Korintus 2:2",
+                    text: "Sebab jikalau aku mendukakan hatimu, siapakah yang dapat membuat aku bersukacita selain daripada kamu sendiri, yang telah kusedihkan?",
+                    explanation: "Paulus mengungkapkan bahwa jika ia mendukakan hati seseorang, maka hanya orang yang berdukacita itu pula yang bisa membahagiakan dirinya kembali.",
+                    moralMessage: "Hubungan yang tulus dan saling peduli bisa membawa sukacita setelah dukacita. Kita harus menjaga hubungan baik dan saling memaafkan."
+                },
+                {
+                    ref: "Efesus 4:30",
+                    text: "Dan janganlah kamu mendukakan Roh Kudus Allah, yang telah memeteraikan kamu menjelang hari penyelamatan.",
+                    explanation: "Ayat ini mengingatkan agar tidak mendukakan Roh Kudus Allah, yang telah memeteraikan kita menjelang hari penyelamatan.",
+                    moralMessage: "Kita harus menjaga kehidupan rohani dan tidak melakukan hal yang menyedihkan hati Tuhan, karena Roh Kudus adalah jaminan keselamatan kita."
+                },
+                {
+                    ref: "Yesaya 63:10",
+                    text: "Tetapi mereka memberontak dan mendukakan Roh Kudus-Nya; maka Ia berubah menjadi musuh mereka, dan Ia sendiri berperang melawan mereka.",
+                    explanation: "Ayat ini menceritakan bagaimana bangsa Israel memberontak dan mendukakan Roh Kudus, sehingga Tuhan berubah menjadi musuh mereka.",
+                    moralMessage: "Memberontak dan tidak taat kepada Tuhan akan mendatangkan akibat buruk. Kita harus selalu setia dan menghormati kehadiran Tuhan dalam hidup kita."
+                },
+                {
+                    ref: "Amsal 17:21",
+                    text: "Siapa mendapat anak yang bebal akan mendapat duka, dan ayah orang bodoh tidak akan bersukacita.",
+                    explanation: "Ayat ini menyatakan bahwa siapa mendapat anak yang bebal akan mendapat duka, dan ayah orang bodoh tidak akan bersukacita.",
+                    moralMessage: "Perbuatan dan sikap kita mempengaruhi kebahagiaan orang lain, terutama keluarga. Kita harus berusaha menjadi pribadi yang bijak dan membawa sukacita bagi orang tua dan keluarga."
+                },
+                {
+                    ref: "Ayub 14:22",
+                    text: "Tetapi tubuhnya sendiri menderita kesakitan, dan jiwanya sendiri berduka cita.",
+                    explanation: "Ayat ini menggambarkan bagaimana tubuh dan jiwa bisa menderita dan berduka karena penderitaan yang dialami sendiri.",
+                    moralMessage: "Penderitaan dan dukacita adalah bagian dari hidup, tetapi kita harus tetap percaya bahwa Tuhan memahami dan bisa membawa kita keluar dari pergumulan itu."
+                }
+            ],
+            sukacita: [
+                {
+                    ref: "Filipi 2:18",
+                    text: "Dan kamu juga harus bersukacita demikian dan bersukacitalah dengan aku.",
+                    explanation: "Paulus mengajak jemaat Filipi untuk bersukacita bersama dengannya, menunjukkan semangat kebersamaan dan dukungan di tengah pelayanan atau tantangan hidup.",
+                    moralMessage: "Sukacita sejati bisa dirasakan bersama orang lain. Berbagi sukacita memperkuat persekutuan dan mendorong semangat satu sama lain."
+                },
+                {
+                    ref: "Filipi 4:4",
+                    text: "Bersukacitalah senantiasa dalam Tuhan! Sekali lagi kukatakan: Bersukacitalah!",
+                    explanation: "Paulus menekankan pentingnya bersukacita senantiasa dalam Tuhan, bahkan sampai diulang dua kali untuk menegaskan pesannya.",
+                    moralMessage: "Sukacita sejati berasal dari Tuhan dan tidak tergantung pada keadaan luar. Kita diajak untuk tetap bersukacita di segala situasi."
+                },
+                {
+                    ref: "Yohanes 15:11",
+                    text: "Semuanya itu Kukatakan kepadamu, supaya sukacita-Ku ada di dalam kamu dan sukacitamu menjadi penuh.",
+                    explanation: "Yesus berkata bahwa Ia mengajarkan segala sesuatu agar sukacita-Nya ada di dalam murid-murid dan sukacita mereka menjadi penuh.",
+                    moralMessage: "Sukacita Yesus adalah sukacita yang sejati dan abadi. Dengan mengikuti ajaran-Nya, kita akan merasakan sukacita yang penuh dan tulus."
+                },
+                {
+                    ref: "Yohanes 8:56",
+                    text: "Abraham bapamu bersukacita bahwa ia akan melihat hari-Ku dan ia telah melihatnya dan ia bersukacita.",
+                    explanation: "Yesus menyebutkan bahwa Abraham, bapa orang beriman, bersukacita karena melihat hari-Nya, yaitu kedatangan Kristus.",
+                    moralMessage: "Sukacita sejati datang dari pengharapan akan janji Tuhan yang digenapi. Kita diajak untuk bersukacita dalam pengharapan akan karya Tuhan."
+                },
+                {
+                    ref: "Lukas 1:14",
+                    text: "Engkau akan bersukacita dan bergembira, bahkan banyak orang akan bersukacita atas kelahirannya itu.",
+                    explanation: "Ayat ini menubuatkan sukacita atas kelahiran Yohanes Pembaptis, yang akan membuat banyak orang bersukacita.",
+                    moralMessage: "Kelahiran yang membawa kebaikan akan mengundang sukacita bagi banyak orang. Kita diajak untuk bersukacita atas kebaikan yang Tuhan berikan."
+                },
+                {
+                    ref: "Roma 12:15",
+                    text: "Bersukacitalah dengan orang yang bersukacita, dan menangislah dengan orang yang menangis!",
+                    explanation: "Paulus mengajak untuk bersukacita dengan orang yang bersukacita dan menangis dengan orang yang menangis.",
+                    moralMessage: "Empati dan kebersamaan sangat penting. Kita harus berbagi sukacita dan dukacita dengan sesama."
+                },
+                {
+                    ref: "1 Tesalonika 5:16",
+                    text: "Bersukacitalah senantiasa.",
+                    explanation: "Paulus menasihati untuk senantiasa bersukacita.",
+                    moralMessage: "Sukacita sejati adalah pilihan hidup yang tidak tergantung pada keadaan, tetapi pada iman dan pengharapan kepada Tuhan."
+                },
+                {
+                    ref: "1 Tesalonika 2:20",
+                    text: "Sungguh, kamulah kemuliaan kami dan sukacita kami.",
+                    explanation: "Paulus menyebut jemaat Tesalonika sebagai kemuliaan dan sukacitanya.",
+                    moralMessage: "Hubungan yang baik dan pertumbuhan iman sesama adalah sumber sukacita. Kita diajak untuk saling membangun dan bersukacita dalam persekutuan."
+                },
+                {
+                    ref: "Kisah Para Rasul 8:8",
+                    text: "Maka sangatlah besar sukacita dalam kota itu.",
+                    explanation: "Setelah Filipus memberitakan Injil dan banyak mujizat terjadi, kota itu dipenuhi sukacita besar.",
+                    moralMessage: "Kabar baik dan karya Tuhan membawa sukacita bagi banyak orang. Kita diajak untuk menyebarkan kebaikan dan sukacita."
+                },
+                {
+                    ref: "Filipi 2:17",
+                    text: "Tetapi sekalipun darahku dicurahkan pada korban dan ibadah imanmu, aku bersukacita dan aku bersukacita dengan kamu sekalian.",
+                    explanation: "Paulus bersukacita meskipun harus menderita demi iman, dan ia bersukacita bersama jemaat.",
+                    moralMessage: "Sukacita sejati bisa dirasakan bahkan di tengah penderitaan, jika itu dilakukan demi Tuhan dan sesama."
+                }
+            ],
+            bahagia: [
+                {
+                    ref: "Mazmur 144:15",
+                    text: "Berbahagialah bangsa yang demikian keadaannya! Berbahagialah bangsa yang Allahnya ialah TUHAN!",
+                    explanation: "Ayat ini memberkati bangsa yang menjadikan Tuhan sebagai Allahnya. Kebahagiaan sejati terletak pada bangsa yang hidup dalam kebenaran dan takut akan Tuhan.",
+                    moralMessage: "Kebahagiaan dan keberkahan sejati hanya datang dari Tuhan. Bangsa yang hidup dalam kebenaran dan menjadikan Tuhan sebagai pusat hidup akan diberkati dan bahagia."
+                },
+                {
+                    ref: "2 Tawarikh 9:7",
+                    text: "Berbahagialah orang-orangmu, dan berbahagialah para pegawaimu ini yang selalu melayani engkau dan menyaksikan hikmatmu!",
+                    explanation: "Ratu Syeba memberkati para pegawai dan orang-orang yang melayani Raja Salomo, karena mereka menyaksikan hikmat dan kemuliaan raja.",
+                    moralMessage: "Melayani dengan setia dan menyaksikan kebaikan serta hikmat adalah sumber kebahagiaan. Kita harus menghargai orang yang setia dan bijaksana."
+                },
+                {
+                    ref: "1 Raja-raja 10:8",
+                    text: "Berbahagialah para isterimu, berbahagialah para pegawaimu ini yang selalu melayani engkau dan menyaksikan hikmatmu!",
+                    explanation: "Ratu Syeba menyebut para istri dan pegawai Raja Salomo berbahagia karena mereka selalu melayani dan menyaksikan hikmat raja.",
+                    moralMessage: "Kebahagiaan juga datang dari lingkungan yang baik dan pemimpin yang bijaksana. Persekutuan dengan orang yang berhikmat membawa sukacita."
+                },
+                {
+                    ref: "Matius 5:8",
+                    text: "Berbahagialah orang yang suci hatinya, karena mereka akan melihat Allah.",
+                    explanation: "Yesus mengatakan bahwa orang yang suci hatinya akan berbahagia karena mereka akan melihat Allah.",
+                    moralMessage: "Kesucian hati adalah kunci untuk mengalami kehadiran Tuhan. Kita harus menjaga hati agar tetap bersih dan tulus."
+                },
+                {
+                    ref: "Kejadian 30:13",
+                    text: "Berkatalah Lea: “Aku ini berbahagia! Tentulah perempuan-perempuan akan menyebutkan aku berbahagia.” Maka ia menamai anak itu Asyer.",
+                    explanation: "Lea merasa bahagia dan percaya bahwa orang lain akan menyebutnya berbahagia karena kelahiran anaknya, Asyer.",
+                    moralMessage: "Kebahagiaan sering datang dari berkat yang Tuhan berikan, seperti keluarga dan anak-anak. Kita harus bersyukur atas setiap berkat yang diterima."
+                },
+                {
+                    ref: "Matius 13:16",
+                    text: "Tetapi berbahagialah matamu karena melihat dan telingamu karena mendengar.",
+                    explanation: "Yesus memberkati murid-murid karena mereka diberi kesempatan melihat dan mendengar kebenaran.",
+                    moralMessage: "Kita berbahagia jika diberi kesempatan mengenal kebenaran Tuhan. Jangan sia-siakan kesempatan untuk belajar dan menerima firman Tuhan."
+                },
+                {
+                    ref: "Efesus 6:3",
+                    text: "Supaya kamu berbahagia dan panjang umurmu di bumi.",
+                    explanation: "Paulus mengingatkan pentingnya menghormati orang tua agar hidup berbahagia dan panjang umur di bumi.",
+                    moralMessage: "Menghormati orang tua membawa kebahagiaan dan berkat dalam hidup. Keluarga yang harmonis adalah sumber kebahagiaan."
+                },
+                {
+                    ref: "Matius 5:4",
+                    text: "Berbahagialah orang yang berdukacita, karena mereka akan dihibur.",
+                    explanation: "Yesus menyatakan bahwa orang yang berdukacita akan berbahagia karena mereka akan dihibur.",
+                    moralMessage: "Kesedihan bukan akhir dari segalanya. Tuhan memberikan penghiburan bagi mereka yang berdukacita dan mencari-Nya."
+                },
+                {
+                    ref: "Roma 4:8",
+                    text: "Berbahagialah manusia yang kesalahannya tidak diperhitungkan Tuhan kepadanya.",
+                    explanation: "Paulus mengutip Mazmur yang mengatakan bahwa berbahagialah orang yang dosanya diampuni dan tidak diperhitungkan Tuhan.",
+                    moralMessage: "Pengampunan Tuhan adalah sumber kebahagiaan sejati. Kita harus mengakui dosa dan menerima pengampunan-Nya."
+                },
+                {
+                    ref: "Galatia 4:15",
+                    text: "Betapa bahagianya kamu pada waktu itu! Dan sekarang, di manakah bahagiamu itu? Karena aku dapat bersaksi tentang kamu, bahwa jika mungkin, kamu telah mencungkil matamu dan memberikannya kepadaku.",
+                    explanation: "Paulus mengingatkan jemaat Galatia tentang kebahagiaan mereka di masa lalu dan mempertanyakan di mana kebahagiaan itu sekarang.",
+                    moralMessage: "Kebahagiaan sejati harus dipertahankan dan tidak mudah hilang karena masalah atau perubahan keadaan. Kita harus tetap bersyukur dan setia pada Tuhan."
+                }
+            ],
+            takut: [
+                {
+                    ref: "Yohanes 6:20",
+                    text: "Tetapi Ia berkata kepada mereka: “Aku ini, jangan takut!”",
+                    explanation: "Yesus berkata kepada para murid-Nya di tengah badai, “Aku ini, jangan takut!” Ini menunjukkan bahwa di tengah ketakutan dan ketidakpastian, kehadiran Yesus memberikan rasa aman dan ketenangan.",
+                    moralMessage: "Ketika hidup terasa menakutkan atau tidak pasti, ingatlah bahwa Yesus selalu ada di samping kita. Kehadiran-Nya mampu menenangkan hati dan mengusir ketakutan, sehingga kita bisa tetap kuat dan percaya diri."
+                },
+                {
+                    ref: "1 Yohanes 4:18",
+                    text: "Di dalam kasih tidak ada ketakutan: kasih yang sempurna melenyapkan ketakutan; sebab ketakutan mengandung hukuman dan barangsiapa takut, ia tidak sempurna di dalam kasih.",
+                    explanation: "Ayat ini mengajarkan bahwa kasih yang sempurna melenyapkan ketakutan. Ketakutan sering muncul karena kekhawatiran akan hukuman atau masa depan yang tidak pasti.",
+                    moralMessage: "Kasih adalah kekuatan terbesar untuk mengatasi rasa takut. Saat kita mengasihi dan dikasihi—baik oleh Tuhan maupun sesama—kita menjadi lebih berani dan tidak mudah dikuasai oleh ketakutan."
+                },
+                {
+                    ref: "Mazmur 34:9",
+                    text: "Takutlah akan TUHAN, hai orang-orang-Nya yang kudus, sebab tidak berkekurangan orang yang takut akan Dia!",
+                    explanation: "Pemazmur mengajak kita untuk takut akan Tuhan, yang berarti menghormati dan mengandalkan-Nya. Orang yang takut akan Tuhan akan mengalami pemeliharaan dan tidak berkekurangan.",
+                    moralMessage: "Menghormati Tuhan dan hidup sesuai kehendak-Nya membuat hidup kita penuh makna dan selalu dipenuhi oleh kebaikan-Nya. Ini membuat kita tidak mudah merasa sendiri atau kekurangan."
+                },
+                {
+                    ref: "Mazmur 119:120",
+                    text: "Badanku gemetar karena ketakutan terhadap Engkau, aku takut kepada penghukuman-Mu.",
+                    explanation: "Pemazmur menggambarkan rasa takut akan penghukuman Tuhan, yang membuat tubuhnya gemetar. Ini menunjukkan kesadaran akan keadilan dan kekudusan Tuhan.",
+                    moralMessage: "Kesadaran akan keadilan Tuhan seharusnya membuat kita selalu berusaha hidup benar. Namun, Tuhan juga Maha Pengampun, sehingga kita tidak perlu hidup dalam ketakutan yang berlebihan."
+                },
+                {
+                    ref: "Lukas 12:5",
+                    text: "Aku akan menunjukkan kepada kamu siapakah yang harus kamu takuti. Takutilah Dia, yang setelah membunuh, mempunyai kuasa untuk melemparkan orang ke dalam neraka. Sesungguhnya Aku berkata kepadamu, takutilah Dia!",
+                    explanation: "Yesus mengingatkan bahwa yang patut kita takuti adalah Tuhan, bukan manusia atau hal-hal duniawi. Tuhan memiliki kuasa atas hidup dan mati.",
+                    moralMessage: "Lebih baik takut akan Tuhan daripada takut kepada manusia atau masalah dunia. Ketakutan kepada Tuhan mendorong kita untuk hidup benar dan penuh makna."
+                },
+                {
+                    ref: "Yeremia 42:11",
+                    text: "Janganlah takut kepada raja Babel yang kamu takuti itu. Janganlah takut kepadanya, demikianlah firman TUHAN, sebab Aku menyertai kamu untuk menyelamatkan kamu dan untuk melepaskan kamu dari tangannya.",
+                    explanation: "Tuhan berfirman agar bangsa Israel tidak takut kepada raja Babel, karena Tuhan sendiri yang akan menyertai dan menyelamatkan mereka.",
+                    moralMessage: "Tuhan selalu siap menolong dan melindungi kita dari ancaman apa pun. Percayalah pada penyertaan-Nya, dan jangan biarkan ketakutan menguasai hidup kita."
+                },
+                {
+                    ref: "Roma 3:18",
+                    text: "Rasa takut kepada Allah tidak ada pada orang itu.",
+                    explanation: "Ayat ini menyatakan bahwa orang yang tidak takut kepada Allah berarti tidak memiliki penghormatan dan pengertian akan kekudusan-Nya.",
+                    moralMessage: "Mengenal dan menghormati Tuhan adalah dasar dari kehidupan yang bijak. Tanpa rasa takut akan Tuhan, hidup bisa kehilangan arah dan makna."
+                },
+                {
+                    ref: "Yosua 4:14",
+                    text: "Pada waktu itulah TUHAN membesarkan nama Yosua di mata seluruh orang Israel, sehingga mereka takut kepadanya, seperti mereka takut kepada Musa seumur hidupnya.",
+                    explanation: "Tuhan membesarkan nama Yosua di mata bangsa Israel, sehingga mereka menghormati dan takut kepadanya. Ini menunjukkan pengakuan akan kepemimpinan yang diurapi Tuhan.",
+                    moralMessage: "Kepemimpinan yang benar dan diurapi Tuhan akan dihormati oleh orang lain. Takut akan Tuhan membawa pengaruh baik dalam hidup dan lingkungan sekitar."
+                },
+                {
+                    ref: "Yehezkiel 7:25",
+                    text: "Ketakutan datang, dan mereka mencari keselamatan, tetapi tidak ada.",
+                    explanation: "Ketika ketakutan datang, orang mencari keselamatan, tetapi tidak menemukannya. Ini menggambarkan keputusasaan saat menghadapi masalah tanpa Tuhan.",
+                    moralMessage: "Ketakutan dan keputusasaan bisa membuat kita merasa sendiri dan tidak berdaya. Namun, dengan Tuhan, selalu ada harapan dan jalan keluar."
+                },
+                {
+                    ref: "Lukas 1:12",
+                    text: "Melihat hal itu ia terkejut dan menjadi takut.",
+                    explanation: "Zakharia menjadi takut ketika melihat malaikat Tuhan. Ini wajar, karena manusia sering takut ketika menghadapi sesuatu yang luar biasa atau tidak terduga.",
+                    moralMessage: "Ketakutan adalah reaksi alami manusia, tetapi Tuhan selalu siap menenangkan dan memberikan kekuatan baru. Jangan biarkan ketakutan menghalangi kita untuk menerima berkat dan rencana Tuhan."
+                }
+            ],
+            gentar: [
+                {
+                    ref: "1 Samuel 14:15",
+                    text: "Lalu timbullah kegentaran di perkemahan, di padang dan di antara seluruh rakyat. Juga pasukan pengawal dan penjarah-penjarah itu gentar, dan bumi gemetar, sehingga menjadi kegentaran yang dari Allah.",
+                    explanation: "Terjadi kegentaran di seluruh perkemahan dan di antara rakyat, bahkan bumi pun gemetar. Ini menunjukkan ketakutan yang besar, bahkan hingga alam seolah merasakan ketegangan tersebut.",
+                    moralMessage: "Ketakutan bisa menular dan memengaruhi banyak orang, bahkan lingkungan sekitar. Namun, dalam situasi demikian, penting untuk tetap percaya bahwa Tuhan bisa memberikan ketenangan dan kekuatan."
+                },
+                {
+                    ref: "Yeremia 1:17",
+                    text: "Tetapi engkau ini, baiklah engkau bersiap, bangkitlah dan sampaikanlah kepada mereka segala yang Kuperintahkan kepadamu. Janganlah gentar terhadap mereka, supaya jangan Aku menggentarkan engkau di depan mereka!",
+                    explanation: "Tuhan meminta Yeremia untuk tidak gentar terhadap orang-orang yang akan dihadapinya, agar Tuhan tidak perlu menggentarkan Yeremia di depan mereka.",
+                    moralMessage: "Tuhan ingin kita berani dan tidak mudah gentar menghadapi tantangan. Jika kita percaya pada penyertaan Tuhan, kita akan diberi kekuatan untuk berdiri teguh."
+                },
+                {
+                    ref: "1 Korintus 2:3",
+                    text: "Aku juga telah datang kepadamu dalam kelemahan dan dengan sangat takut dan gentar.",
+                    explanation: "Paulus mengakui bahwa ia datang dalam kelemahan, sangat takut dan gentar. Ini menunjukkan bahwa Paulus pun pernah merasa tidak percaya diri dan takut.",
+                    moralMessage: "Setiap orang bisa merasa takut dan gentar, bahkan tokoh besar seperti Paulus. Namun, Tuhan tetap bisa menggunakan kita untuk melakukan hal-hal besar meski kita merasa lemah."
+                },
+                {
+                    ref: "Mazmur 48:6 (48:7)",
+                    text: "Kegentaran menimpa mereka di sana; mereka kesakitan seperti perempuan yang hendak melahirkan.",
+                    explanation: "Kegentaran menimpa musuh-musuh, sehingga mereka kesakitan seperti perempuan yang hendak melahirkan. Ini menggambarkan kepanikan dan ketakutan yang luar biasa.",
+                    moralMessage: "Ketakutan yang berlebihan bisa membuat manusia tidak berdaya. Kita harus berusaha untuk tidak membiarkan ketakutan menguasai hati dan pikiran."
+                },
+                {
+                    ref: "Mazmur 34:4 (34:5)",
+                    text: "Aku telah mencari TUHAN, lalu Ia menjawab aku, dan melepaskan aku dari segala kegentaranku.",
+                    explanation: "Pemazmur mencari Tuhan dan Tuhan menjawab serta melepaskannya dari segala kegentarannya.",
+                    moralMessage: "Tuhan selalu siap menolong dan memberikan ketenangan di tengah kegentaran. Mencari Tuhan adalah solusi terbaik saat kita merasa takut."
+                },
+                {
+                    ref: "Ayub 13:21",
+                    text: "Jauhkanlah kiranya tangan-Mu dari padaku, dan kegentaran terhadap Engkau janganlah menimpa aku!",
+                    explanation: "Ayub memohon agar Tuhan menjauhkan hukuman dan kegentaran darinya. Ini menunjukkan bahwa Ayub juga pernah merasa takut akan penghakiman Tuhan.",
+                    moralMessage: "Setiap orang bisa merasa takut akan penghukuman atau masalah besar. Namun, Tuhan Maha Pengasih dan selalu siap mendengarkan permohonan kita."
+                },
+                {
+                    ref: "Yeremia 10:2",
+                    text: "Beginilah firman TUHAN: “Janganlah biasakan dirimu dengan tingkah langkah bangsa-bangsa, janganlah gentar terhadap tanda-tanda di langit, sekalipun bangsa-bangsa gentar terhadapnya.”",
+                    explanation: "Tuhan meminta agar bangsa Israel tidak gentar terhadap tanda-tanda di langit, meski bangsa lain gentar terhadapnya.",
+                    moralMessage: "Kita tidak perlu takut pada hal-hal duniawi atau takhayul, karena Tuhan adalah sumber kekuatan dan perlindungan sejati."
+                },
+                {
+                    ref: "Matius 28:4",
+                    text: "Dan penjaga-penjaga itu gentar ketakutan dan menjadi seperti orang-orang mati.",
+                    explanation: "Para penjaga kubur gentar ketakutan dan menjadi seperti orang mati ketika melihat malaikat Tuhan.",
+                    moralMessage: "Ketakutan bisa membuat manusia tidak berdaya, bahkan seolah mati. Namun, kehadiran Tuhan selalu membawa pengharapan dan kekuatan baru."
+                },
+                {
+                    ref: "Markus 14:33",
+                    text: "Dan Ia membawa Petrus, Yakobus dan Yohanes serta-Nya. Ia sangat takut dan gentar.",
+                    explanation: "Yesus sendiri sangat takut dan gentar saat menghadapi penderitaan di Getsemani. Ini menunjukkan bahwa Yesus pun pernah merasakan ketakutan manusiawi.",
+                    moralMessage: "Merasa takut adalah hal yang manusiawi, bahkan Yesus pun mengalaminya. Namun, dengan berdoa dan percaya kepada Bapa, kita bisa menemukan kekuatan untuk menghadapi ketakutan itu."
+                },
+                {
+                    ref: "Yeremia 30:5",
+                    text: "“Sungguh, beginilah firman TUHAN: Telah kami dengar jerit kegentaran, kedahsyatan dan tidak ada damai.”",
+                    explanation: "Tuhan menggambarkan situasi di mana jerit kegentaran dan kedahsyatan terdengar, dan tidak ada damai. Ini menggambarkan suasana ketakutan yang meluas.",
+                    moralMessage: "Di tengah dunia yang penuh ketakutan dan kegentaran, Tuhan tetap hadir dan bisa membawa damai sejahtera bagi mereka yang percaya kepada-Nya."
+                }
+            ],
+            cinta: [
+                {
+                    ref: "Ulangan 21:15",
+                    text: "“Apabila seorang mempunyai dua orang isteri, yang seorang dicintai dan yang lain tidak dicintainya, dan mereka melahirkan anak-anak lelaki baginya, baik isteri yang dicintai maupun isteri yang tidak dicintai, dan anak sulung adalah dari isteri yang tidak dicintai.”",
+                    explanation: "Ayat ini membahas situasi di mana seorang laki-laki memiliki dua istri—satu yang dicintai dan satu yang tidak dicintai—dan keduanya melahirkan anak baginya. Anak sulung berasal dari istri yang tidak dicintai.",
+                    moralMessage: "Keadilan dan perlakuan yang adil sangat penting dalam keluarga. Kasih dan ketidakadilan bisa menimbulkan masalah, sehingga kita harus berusaha berlaku adil kepada semua anggota keluarga."
+                },
+                {
+                    ref: "Amsal 12:1",
+                    text: "Siapa mencintai didikan, mencintai pengetahuan; tetapi siapa membenci teguran, adalah dungu.",
+                    explanation: "Ayat ini menyatakan bahwa siapa yang mencintai didikan, ia mencintai pengetahuan, tetapi siapa membenci teguran adalah dungu.",
+                    moralMessage: "Mencintai pengetahuan dan menerima teguran adalah tanda kebijaksanaan. Kita harus rendah hati dan terbuka untuk belajar serta memperbaiki diri."
+                },
+                {
+                    ref: "2 Samuel 1:26",
+                    text: "Merasa susah aku karena engkau, saudaraku Yonatan, engkau sangat ramah kepadaku; bagiku cintamu lebih ajaib dari pada cinta perempuan.",
+                    explanation: "Daud mengungkapkan kesedihan mendalam atas kematian Yonatan dan menyebut cinta Yonatan kepadanya lebih ajaib daripada cinta perempuan.",
+                    moralMessage: "Persahabatan yang tulus dan saling mencintai adalah berkat yang sangat indah. Kasih persaudaraan bisa melebihi kasih romantis dalam kehangatan dan kesetiaan."
+                },
+                {
+                    ref: "Hosea 3:1",
+                    text: "Berfirmanlah TUHAN kepadaku: “Pergilah lagi, cintailah perempuan yang suka bersundal dan berzinah, seperti TUHAN juga mencintai orang Israel, sekalipun mereka berpaling kepada allah-allah lain dan menyukai kue kismis.”",
+                    explanation: "Tuhan memerintahkan Hosea untuk mencintai perempuan yang suka bersundal dan berzinah, sebagai gambaran kasih Tuhan kepada umat Israel yang suka berpaling kepada allah lain.",
+                    moralMessage: "Kasih Tuhan tidak bersyarat dan tetap setia meskipun manusia sering berbuat salah. Kita diajak untuk belajar mengasihi meski dalam keadaan sulit."
+                },
+                {
+                    ref: "1 Raja-raja 11:1",
+                    text: "Adapun raja Salomo mencintai banyak perempuan asing. Di samping anak Firaun ia mencintai perempuan-perempuan Moab, Amon, Edom, Sidon dan Het.",
+                    explanation: "Raja Salomo mencintai banyak perempuan asing, yang akhirnya membawanya kepada penyembahan allah lain dan kehancuran rohani.",
+                    moralMessage: "Kasih yang salah arah atau tidak terkendali bisa membawa konsekuensi negatif. Kita harus berhati-hati dalam memilih siapa dan apa yang kita cintai."
+                },
+                {
+                    ref: "Yohanes 12:25",
+                    text: "Barangsiapa mencintai nyawanya, ia akan kehilangan nyawanya, tetapi barangsiapa tidak mencintai nyawanya di dunia ini, ia akan memeliharanya untuk hidup yang kekal.",
+                    explanation: "Yesus berkata bahwa barangsiapa mencintai nyawanya, ia akan kehilangan nyawanya, tetapi barangsiapa tidak mencintai nyawanya di dunia ini, ia akan memeliharanya untuk hidup yang kekal.",
+                    moralMessage: "Kasih yang berpusat pada diri sendiri tidak membawa kehidupan yang sejati. Kasih yang rela berkorban dan mengutamakan Tuhan justru membawa hidup yang kekal."
+                },
+                {
+                    ref: "Kidung Agung 8:7",
+                    text: "Air yang banyak tak dapat memadamkan cinta, sungai-sungai tak dapat menghanyutkannya. Sekalipun orang memberi segala harta benda rumahnya untuk cinta, namun ia pasti akan dihina.",
+                    explanation: "Ayat ini menggambarkan kekuatan cinta yang tak bisa dipadamkan oleh air yang banyak atau dihanyutkan oleh sungai-sungai. Cinta tidak bisa dibeli dengan harta.",
+                    moralMessage: "Cinta sejati adalah kuat, abadi, dan tidak bisa diukur dengan materi. Cinta yang tulus tidak bisa dipaksa atau dibeli."
+                },
+                {
+                    ref: "Kidung Agung 2:4",
+                    text: "Telah dibawanya aku ke rumah pesta, dan panjinya di atasku adalah cinta.",
+                    explanation: "Ayat ini menggambarkan kehangatan dan kebahagiaan yang dirasakan saat dibawa ke rumah pesta dengan panji cinta di atasnya.",
+                    moralMessage: "Cinta membawa sukacita dan kehangatan dalam hidup. Kehadiran kasih membuat hidup lebih bermakna."
+                },
+                {
+                    ref: "Mazmur 108:6 (108:7)",
+                    text: "Supaya terluput orang-orang yang Kaucintai, selamatkanlah dengan tangan kanan-Mu dan jawablah aku!",
+                    explanation: "Ayat ini adalah doa agar orang-orang yang dikasihi Tuhan diselamatkan oleh tangan kanan-Nya.",
+                    moralMessage: "Kasih Tuhan adalah perlindungan dan keselamatan bagi umat-Nya. Kita harus percaya bahwa Tuhan selalu melindungi orang yang dikasihi-Nya."
+                },
+                {
+                    ref: "Pengkotbah 5:10",
+                    text: "Siapa mencintai uang tidak akan puas dengan uang, dan siapa mencintai kekayaan tidak akan puas dengan penghasilannya. Inipun sia-sia.",
+                    explanation: "Siapa mencintai uang tidak akan puas dengan uang, dan siapa mencintai kekayaan tidak akan puas dengan penghasilannya. Ini adalah kesia-siaan.",
+                    moralMessage: "Mencintai harta atau kekayaan tidak akan pernah membawa kepuasan sejati. Kebahagiaan sejati hanya ditemukan dalam hal-hal yang berharga di hadapan Tuhan."
+                }
+            ],
+            kasih: [
+                {
+                    ref: "Kidung Agung 5:9",
+                    text: "Apakah kelebihan kekasihmu dari pada kekasih yang lain, hai jelita di antara wanita? Apakah kelebihan kekasihmu dari pada kekasih yang lain, sehingga kausumpahi kami begini?",
+                    explanation: "Ayat ini menceritakan pertanyaan tentang apa kelebihan kekasih dibandingkan kekasih yang lain, yang membuat kekasih ini begitu istimewa.",
+                    moralMessage: "Setiap orang berhak memilih pasangan yang paling istimewa di hatinya. Kasih yang tulus dan saling menghargai membuat hubungan menjadi unik dan berharga."
+                },
+                {
+                    ref: "Roma 13:10",
+                    text: "Kasih tidak berbuat jahat terhadap sesama manusia, karena itu kasih adalah kegenapan hukum Taurat.",
+                    explanation: "Kasih tidak berbuat jahat terhadap sesama manusia, sehingga kasih adalah kegenapan hukum Taurat.",
+                    moralMessage: "Kasih adalah inti dari segala perintah Tuhan. Jika kita mengasihi sesama, kita sudah memenuhi seluruh hukum. Kasih melindungi kita dari berbuat jahat."
+                },
+                {
+                    ref: "Amsal 20:28",
+                    text: "Kasih dan setia melindungi raja, dan dengan kasih ia menopang takhtanya.",
+                    explanation: "Kasih dan setia melindungi raja, dan dengan kasih ia menopang takhtanya.",
+                    moralMessage: "Kasih dan kesetiaan adalah fondasi kepemimpinan dan kekuasaan. Pemimpin yang mengasihi rakyatnya akan mendapat dukungan dan perlindungan dari Tuhan."
+                },
+                {
+                    ref: "2 Petrus 1:7",
+                    text: "Dan kepada kesalehan kasih akan saudara-saudara, dan kepada kasih akan saudara-saudara kasih akan semua orang.",
+                    explanation: "Ayat ini mengajarkan bahwa setelah kesalehan, kita harus menambahkan kasih akan saudara-saudara, dan dari kasih itu, kasih akan semua orang.",
+                    moralMessage: "Kasih harus terus berkembang, mulai dari saudara seiman sampai kepada semua orang. Kasih adalah tanda kedewasaan rohani."
+                },
+                {
+                    ref: "3 Yohanes 1:1",
+                    text: "Dari penatua kepada Gayus yang kekasih, yang kukasihi dalam kebenaran.",
+                    explanation: "Penulis surat mengungkapkan kasihnya kepada Gayus, yang dikasihi dalam kebenaran.",
+                    moralMessage: "Kasih yang didasari kebenaran membawa hubungan yang sehat dan saling membangun. Kasih yang tulus selalu berpusat pada kebenaran."
+                },
+                {
+                    ref: "1 Yohanes 4:16",
+                    text: "Kita telah mengenal dan telah percaya akan kasih Allah kepada kita. Allah adalah kasih, dan barangsiapa tetap berada di dalam kasih, ia tetap berada di dalam Allah dan Allah di dalam dia.",
+                    explanation: "Kita telah mengenal dan telah percaya akan kasih Allah kepada kita. Allah adalah kasih, dan barangsiapa tetap berada di dalam kasih, ia tetap berada di dalam Allah dan Allah di dalam dia.",
+                    moralMessage: "Kasih Allah adalah sumber hidup kita. Jika kita hidup dalam kasih, maka Allah hadir dalam hidup kita. Kasih adalah inti dari kehidupan Kristen."
+                },
+                {
+                    ref: "Roma 11:6",
+                    text: "Tetapi jika hal itu terjadi karena kasih karunia, maka bukan lagi karena perbuatan, sebab jika tidak demikian, maka kasih karunia itu bukan lagi kasih karunia.",
+                    explanation: "Jika sesuatu terjadi karena kasih karunia, maka bukan lagi karena perbuatan, sebab jika tidak demikian, maka kasih karunia itu bukan lagi kasih karunia.",
+                    moralMessage: "Kasih karunia adalah anugerah Tuhan yang tidak didasari perbuatan kita. Kita harus menerima kasih karunia dengan syukur dan tidak mengandalkan kekuatan sendiri."
+                },
+                {
+                    ref: "Efesus 6:24",
+                    text: "Kasih karunia menyertai semua orang, yang mengasihi Tuhan kita Yesus Kristus dengan kasih yang tidak binasa.",
+                    explanation: "Kasih karunia menyertai semua orang yang mengasihi Tuhan Yesus Kristus dengan kasih yang tidak binasa.",
+                    moralMessage: "Kasih karunia Tuhan selalu menyertai orang yang setia dan mengasihi Tuhan. Kasih yang tulus kepada Tuhan akan selalu diberkati."
+                },
+                {
+                    ref: "Yohanes 1:16",
+                    text: "Karena dari kepenuhan-Nya kita semua telah menerima kasih karunia demi kasih karunia.",
+                    explanation: "Dari kepenuhan-Nya kita semua telah menerima kasih karunia demi kasih karunia.",
+                    moralMessage: "Kasih karunia Tuhan tidak pernah habis dan selalu diberikan kepada kita. Kita harus bersyukur atas setiap kasih karunia yang diterima."
+                },
+                {
+                    ref: "1 Tesalonika 4:9",
+                    text: "Tentang kasih persaudaraan tidak perlu dituliskan kepadamu, karena kamu sendiri telah belajar kasih mengasihi dari Allah.",
+                    explanation: "Tentang kasih persaudaraan tidak perlu dituliskan kepadamu, karena jemaat sudah belajar mengasihi dari Allah.",
+                    moralMessage: "Kasih persaudaraan adalah wujud nyata dari kasih Allah. Jika kita sudah belajar mengasihi, maka hidup kita akan menjadi berkat bagi sesama."
+                }
+            ],
+            marah: [
+                {
+                    ref: "Mazmur 37:8",
+                    text: "Berhentilah marah dan tinggalkanlah panas hati itu, jangan marah, itu hanya membawa kepada kejahatan.",
+                    explanation: "Ayat ini menasehati untuk berhenti marah dan meninggalkan panas hati, karena marah hanya membawa kepada kejahatan.",
+                    moralMessage: "Marah yang tidak terkendali dapat menyebabkan perbuatan jahat. Kita harus belajar mengendalikan emosi agar tidak jatuh ke dalam dosa dan merusak hubungan dengan sesama."
+                },
+                {
+                    ref: "Yunus 4:4",
+                    text: "Tetapi firman TUHAN: “Layakkah engkau marah?”",
+                    explanation: "Tuhan bertanya kepada Yunus apakah ia layak marah, menunjukkan bahwa kemarahan Yunus tidak beralasan di hadapan Tuhan.",
+                    moralMessage: "Kemarahan yang tidak beralasan atau tidak terkendali tidaklah benar. Kita harus introspeksi diri sebelum marah dan meminta hikmat dari Tuhan."
+                },
+                {
+                    ref: "Amsal 19:19",
+                    text: "Orang yang sangat cepat marah akan kena denda, karena jika engkau hendak menolongnya, engkau hanya menambah marahnya.",
+                    explanation: "Orang yang cepat marah akan kena denda, dan jika ingin menolongnya, justru bisa menambah kemarahannya.",
+                    moralMessage: "Kemarahan yang tidak terkendali dapat merugikan diri sendiri dan orang lain. Kita diajak untuk bersabar dan tidak mudah marah."
+                },
+                {
+                    ref: "Matius 20:24",
+                    text: "Mendengar itu marahlah kesepuluh murid yang lain kepada kedua saudara itu.",
+                    explanation: "Kesepuluh murid marah kepada kedua saudara yang meminta posisi istimewa di sisi Yesus.",
+                    moralMessage: "Marah karena iri hati atau persaingan tidak membangun relasi. Kita harus belajar mengatasi kecemburuan dan bersikap rendah hati."
+                },
+                {
+                    ref: "Yunus 4:9",
+                    text: "Tetapi berfirmanlah Allah kepada Yunus: “Layakkah engkau marah karena pohon jarak itu?” Jawabnya: “Selayaknyalah aku marah sampai mati.”",
+                    explanation: "Tuhan bertanya kembali kepada Yunus apakah ia layak marah karena pohon jarak, dan Yunus tetap marah.",
+                    moralMessage: "Kemarahan yang tidak beralasan dan tidak terkendali tidak membawa kebaikan. Kita harus belajar menerima kenyataan dan tidak membiarkan emosi menguasai diri."
+                },
+                {
+                    ref: "2 Samuel 13:21",
+                    text: "Ketika segala perkara itu didengar raja Daud sangat marahlah ia.",
+                    explanation: "Raja Daud sangat marah ketika mendengar segala perkara yang terjadi dalam keluarganya.",
+                    moralMessage: "Marah adalah reaksi alami, namun harus direspons dengan bijak agar tidak menimbulkan masalah baru atau keputusan yang salah."
+                },
+                {
+                    ref: "Lukas 4:28",
+                    text: "Mendengar itu sangat marahlah semua orang yang di rumah ibadat itu.",
+                    explanation: "Semua orang di rumah ibadat sangat marah setelah mendengar perkataan Yesus.",
+                    moralMessage: "Kemarahan yang timbul karena prasangka atau penolakan terhadap kebenaran tidak membawa kebaikan. Kita harus terbuka untuk mendengar dan menerima kebenaran."
+                },
+                {
+                    ref: "Ayub 32:2",
+                    text: "Lalu marahlah Elihu bin Barakheel, orang Bus, dari kaum Ram; ia marah terhadap Ayub, karena ia menganggap dirinya lebih benar dari pada Allah.",
+                    explanation: "Elihu marah terhadap Ayub karena Ayub dianggap menganggap dirinya lebih benar dari Allah.",
+                    moralMessage: "Kemarahan yang muncul karena penilaian terhadap orang lain harus diarahkan dengan bijak, tanpa menghakimi atau menyalahkan secara tidak adil."
+                },
+                {
+                    ref: "2 Tawarikh 25:10",
+                    text: "Kemudian Amazia memisahkan pasukan yang datang bergabung kepadanya dari Efraim, supaya mereka kembali ke tempat tinggalnya. Maka sangat marahlah mereka terhadap Yehuda. Mereka kembali ke tempat tinggalnya dengan marah yang menyala-nyala.",
+                    explanation: "Pasukan dari Efraim sangat marah terhadap Yehuda setelah dipisahkan oleh Amazia, dan mereka pulang dengan kemarahan yang menyala-nyala.",
+                    moralMessage: "Kemarahan yang tidak terkelola dapat menimbulkan permusuhan dan perpecahan. Kita harus belajar menenangkan diri dan mencari solusi damai."
+                },
+                {
+                    ref: "Ayub 32:5",
+                    text: "Tetapi setelah dilihatnya, bahwa mulut ketiga orang itu tidak lagi memberi sanggahan, maka marahlah ia.",
+                    explanation: "Elihu marah karena ketiga orang itu tidak lagi memberi sanggahan.",
+                    moralMessage: "Kemarahan yang muncul karena komunikasi yang tidak lancar harus diatasi dengan dialog dan saling pengertian, bukan dengan emosi negatif."
+                }
+            ],
+            murka: [ // MOOD MURKA DITAMBAHKAN DI SINI
+                {
+                    ref: "Mazmur 85:5",
+                    text: "Untuk selamanyakah Engkau murka atas kami dan melanjutkan murka-Mu turun-temurun?",
+                    explanation: "Ayat ini berisi permohonan kepada Tuhan agar tidak terus-menerus murka kepada umat-Nya, dan tidak melanjutkan murka-Nya turun-temurun.",
+                    moralMessage: "Kita harus menyadari bahwa murka Tuhan tidak selamanya, dan ada harapan untuk pengampunan jika umat bertobat dan memohon belas kasihan-Nya."
+                },
+                {
+                    ref: "Bilangan 12:9",
+                    text: "Sebab itu bangkitlah murka TUHAN terhadap mereka, lalu pergilah Ia.",
+                    explanation: "Murka Tuhan bangkit terhadap Miriam dan Harun karena mereka bersungut-sungut terhadap Musa.",
+                    moralMessage: "Kesombongan dan sikap tidak menghargai pemimpin yang ditetapkan Tuhan dapat mendatangkan murka-Nya. Kita harus belajar menghormati otoritas dan kerendahan hati."
+                },
+                {
+                    ref: "Bilangan 32:10",
+                    text: "Maka bangkitlah murka TUHAN pada waktu itu dan Ia bersumpah:",
+                    explanation: "Murka Tuhan bangkit ketika umat Israel tidak percaya dan memberontak, sehingga Tuhan bersumpah mereka tidak akan masuk ke tanah perjanjian.",
+                    moralMessage: "Ketidakpercayaan dan pemberontakan terhadap Tuhan dapat mendatangkan konsekuensi serius. Kita harus percaya dan taat kepada Tuhan."
+                },
+                {
+                    ref: "Mazmur 2:12",
+                    text: "Supaya Ia jangan murka dan kamu binasa di jalan, sebab mudah sekali murka-Nya menyala. Berbahagialah semua orang yang berlindung pada-Nya!",
+                    explanation: "Ayat ini mengingatkan agar manusia tidak memprovokasi murka Tuhan, karena murka-Nya mudah menyala, dan berbahagialah orang yang berlindung pada-Nya.",
+                    moralMessage: "Kita harus senantiasa berlindung kepada Tuhan agar terhindar dari murka-Nya dan memperoleh berkat-Nya."
+                },
+                {
+                    ref: "Zakharia 1:15",
+                    text: "Tetapi sangat besar murka-Ku terhadap bangsa-bangsa yang merasa dirinya aman, yang, sementara Aku murka sedikit, telah membantu menimbulkan kejahatan.",
+                    explanation: "Tuhan menyatakan murka-Nya yang besar terhadap bangsa-bangsa yang merasa aman dan membantu menimbulkan kejahatan.",
+                    moralMessage: "Kesombongan dan perbuatan jahat akan mendatangkan murka Tuhan. Kita harus hidup adil dan rendah hati."
+                },
+                {
+                    ref: "Roma 2:5",
+                    text: "Tetapi oleh kekerasan hatimu yang tidak mau bertobat, engkau menimbun murka atas dirimu sendiri pada hari waktu mana murka dan hukuman Allah yang adil akan dinyatakan.",
+                    explanation: "Kekerasan hati dan ketidakmauan bertobat menyebabkan seseorang menimbun murka Tuhan atas dirinya sendiri, yang akan dinyatakan pada hari penghakiman.",
+                    moralMessage: "Kita harus bertobat dan tidak mengeraskan hati, agar tidak menimbun murka Tuhan atas diri kita sendiri."
+                },
+                {
+                    ref: "Ulangan 1:37",
+                    text: "Juga kepadaku TUHAN murka oleh karena kamu, dan Ia berfirman: Juga engkau tidak akan masuk ke sana.",
+                    explanation: "Murka Tuhan juga turun kepada Musa karena dosa umat Israel, sehingga Musa pun tidak diizinkan masuk ke tanah perjanjian.",
+                    moralMessage: "Ketaatan dan pertobatan sangat penting, karena dosa dan pemberontakan dapat berdampak luas, bahkan terhadap orang yang tidak bersalah secara langsung."
+                },
+                {
+                    ref: "Mazmur 7:11",
+                    text: "Allah adalah Hakim yang adil dan Allah yang murka setiap saat.",
+                    explanation: "Tuhan adalah Hakim yang adil dan murka setiap saat terhadap ketidakadilan.",
+                    moralMessage: "Kita harus percaya bahwa Tuhan akan menegakkan keadilan, dan murka-Nya adalah respons terhadap kejahatan dan ketidakadilan."
+                },
+                {
+                    ref: "Zakharia 1:2",
+                    text: "“Sangat murka TUHAN atas nenek moyangmu.”",
+                    explanation: "Tuhan sangat murka terhadap nenek moyang Israel karena dosa-dosa mereka.",
+                    moralMessage: "Kita harus belajar dari sejarah, bahwa dosa dan ketidaktaatan mendatangkan murka Tuhan, dan penting untuk hidup benar."
+                },
+                {
+                    ref: "Yesaya 57:17",
+                    text: "Aku murka karena kesalahan kelobaannya, Aku menghajar dia, menyembunyikan wajah-Ku dan murka, tetapi dengan murtad ia menempuh jalan yang dipilih hatinya.",
+                    explanation: "Tuhan murka karena kesalahan dan kelalaian manusia, sehingga menghajar mereka dan menyembunyikan wajah-Nya.",
+                    moralMessage: "Keserakahan dan dosa dapat membuat Tuhan murka, namun selalu ada harapan untuk pemulihan jika manusia bertobat."
+                }
+            ],
+            khawatir: [
+                { ref: "Filipi 4:6-7", text: "Janganlah hendaknya kamu khawatir tentang apa pun juga, tetapi nyatakanlah dalam segala hal keinginanmu kepada Allah dalam doa dan permohonan dengan ucapan syukur. Damai sejahtera Allah, yang melampaui segala akal, akan memelihara hati dan pikiranmu dalam Kristus Yesus." },
+                { ref: "Matius 6:27", text: "Siapakah di antara kamu yang karena kekhawatirannya dapat menambah satu hasta pada jalan hidupnya?" },
+                { ref: "1 Petrus 5:7", text: "Serahkanlah segala kekhawatiranmu kepada-Nya, sebab Ia yang memelihara kamu." }
+            ],
+            bersyukur: [
+                { ref: "1 Tesalonika 5:18", text: "Mengucap syukurlah dalam segala hal, sebab itulah yang dikehendaki Allah di dalam Kristus Yesus bagi kamu." },
+                { ref: "Mazmur 107:1", text: "Bersyukurlah kepada TUHAN, sebab Ia baik! Bahwasanya untuk selama-lamanya kasih setia-Nya." },
+                { ref: "Kolose 3:17", text: "Dan segala sesuatu yang kamu lakukan dengan perkataan atau perbuatan, lakukanlah semuanya itu dalam nama Tuhan Yesus, sambil mengucap syukur oleh Dia kepada Allah Bapa kita." }
+            ],
+            lelah: [
+                { ref: "Matius 11:28", text: "Marilah kepada-Ku, semua yang letih lesu dan berbeban berat, Aku akan memberi kelegaan kepadamu." },
+                { ref: "Yesaya 40:31", text: "Tetapi orang-orang yang menanti-nantikan TUHAN mendapat kekuatan baru: mereka seumpama rajawali yang naik terbang dengan kekuatan sayapnya; mereka berlari dan tidak menjadi lesu, mereka berjalan dan tidak menjadi lelah." },
+                { ref: "2 Korintus 12:9", text: "Tetapi jawab Tuhan kepadaku: 'Cukuplah kasih karunia-Ku bagimu, sebab justru dalam kelemahanlah kuasa-Ku menjadi sempurna.' Sebab itu terlebih suka aku bermegah atas kelemahanku, supaya kuasa Kristus berdiam di dalam aku." }
+            ],
+            bingung: [
+                { ref: "Amsal 3:5-6", text: "Percayalah kepada TUHAN dengan segenap hatimu, dan janganlah bersandar kepada pengertianmu sendiri. Akuilah Dia dalam segala lakumu, maka Ia akan meluruskan jalanmu." },
+                { ref: "Yakobus 1:5", text: "Tetapi apabila di antara kamu ada yang kekurangan hikmat, hendaklah ia memintakannya kepada Allah, yang memberikan kepada semua orang dengan murah hati dan dengan tidak membangkit-bangkit, maka hal itu akan diberikan kepadanya." },
+                { ref: "Yeremia 29:11", text: "Sebab Aku ini mengetahui rancangan-rancangan apa yang ada pada-Ku mengenai kamu, demikianlah firman TUHAN, yaitu rancangan damai sejahtera dan bukan rancangan kecelakaan, untuk memberikan kepadamu hari depan yang penuh harapan." }
+            ],
+            "putus asa": [
+                { ref: "Roma 8:28", text: "Kita tahu sekarang, bahwa Allah turut bekerja dalam segala sesuatu untuk mendatangkan kebaikan bagi mereka yang mengasihi Dia, yaitu bagi mereka yang terpanggil sesuai dengan rencana Allah." },
+                { ref: "Yohanes 16:33", text: "Semuanya itu Kukatakan kepadamu, supaya kamu beroleh damai sejahtera dalam Aku. Dalam dunia kamu menderita penganiayaan, tetapi kuatkanlah hatimu, Aku telah mengalahkan dunia." },
+                { ref: "Mazmur 42:11", text: "Mengapa engkau tertekan, hai jiwaku, dan gelisah di dalam diriku? Berharaplah kepada Allah! Sebab aku bersyukur lagi kepada-Nya, penolongku dan Allahku!" }
+            ],
+            semangat: [
+                { ref: "Filipi 4:13", text: "Segala perkara dapat kutanggung di dalam Dia yang memberi kekuatan kepadaku." },
+                { ref: "Yosua 1:9", text: "Bukankah telah Kuperintahkan kepadamu: kuatkan dan teguhkanlah hatimu? Janganlah kecut dan tawar hati, sebab TUHAN, Allahmu, menyertai engkau, ke mana pun engkau pergi." },
+                { ref: "Efesus 6:10", text: "Akhirnya, hendaklah kamu kuat di dalam Tuhan, di dalam kekuatan kuasa-Nya." }
+            ]
+        };
+
+        const moodButtons = document.querySelectorAll('.mood-button');
+        const verseDisplayContainer = document.getElementById('verseDisplayContainer');
+        const verseReferenceElem = document.getElementById('verseReference');
+        const verseTextElem = document.getElementById('verseText');
+        const otherVerseBtn = document.getElementById('otherVerseBtn');
+        const closeVerseDisplayBtn = document.getElementById('closeVerseDisplayBtn');
+        const showExplanationBtn = document.getElementById('showExplanationBtn');
+        const explanationContainer = document.getElementById('explanationContainer');
+        const explanationTextElem = document.getElementById('explanationText');
+        const moralMessageTextElem = document.getElementById('moralMessageText');
+
+        let currentMood = null;
+        let currentVerse = null;
+
+        function getRandomVerse(mood) {
+            const moodVerses = verses[mood];
+            if (moodVerses && moodVerses.length > 0) {
+                const randomIndex = Math.floor(Math.random() * moodVerses.length);
+                return moodVerses[randomIndex];
+            }
+            return null;
+        }
+
+        function displayVerse(mood) {
+            currentMood = mood;
+            const verse = getRandomVerse(mood);
+            if (verse) {
+                currentVerse = verse;
+                verseReferenceElem.textContent = verse.ref;
+                verseTextElem.textContent = verse.text;
+                verseDisplayContainer.classList.remove('hidden');
+                explanationContainer.classList.add('hidden'); // Sembunyikan penjelasan saat ayat baru muncul
+                verseDisplayContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                alert(`Maaf, belum ada ayat yang tersedia untuk mood "${mood}".`);
+            }
+        }
+
+        moodButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const mood = button.dataset.mood;
+                if (mood) {
+                    displayVerse(mood);
+                }
+            });
+        });
+
+        otherVerseBtn.addEventListener('click', () => {
+            if (currentMood) {
+                const verse = getRandomVerse(currentMood);
+                 if (verse) {
+                    currentVerse = verse;
+                    verseReferenceElem.style.opacity = 0;
+                    verseTextElem.style.opacity = 0;
+                    explanationContainer.classList.add('hidden'); // Sembunyikan penjelasan saat ganti ayat
+
+                    setTimeout(() => {
+                        verseReferenceElem.textContent = verse.ref;
+                        verseTextElem.textContent = verse.text;
+                        verseReferenceElem.style.opacity = 1;
+                        verseTextElem.style.opacity = 1;
+                    }, 300);
+                }
+            }
+        });
+
+        verseReferenceElem.style.transition = 'opacity 0.3s ease-in-out';
+        verseTextElem.style.transition = 'opacity 0.3s ease-in-out';
+
+        closeVerseDisplayBtn.addEventListener('click', () => {
+            verseDisplayContainer.classList.add('hidden');
+            explanationContainer.classList.add('hidden');
+        });
+
+        showExplanationBtn.addEventListener('click', () => {
+            if (currentVerse && currentVerse.explanation && currentVerse.moralMessage) {
+                if (explanationContainer.classList.contains('hidden')) {
+                    explanationTextElem.textContent = currentVerse.explanation;
+                    moralMessageTextElem.textContent = currentVerse.moralMessage;
+                    explanationContainer.classList.remove('hidden');
+                    explanationContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                } else {
+                    explanationContainer.classList.add('hidden');
+                }
+            } else {
+                alert("Penjelasan untuk ayat ini belum tersedia.");
+            }
+        });
+
+    </script>
+</body>
+</html>
