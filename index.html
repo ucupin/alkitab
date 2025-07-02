@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penghiburan Firman: Cari Ayat Sesuai Mood</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+      }
+    }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #3e2723; /* Dark earthy brown */
+            color: #efebe9; /* Light cream text */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        .content-wrapper {
+            position: relative;
+            z-index: 1;
+            background: linear-gradient(to bottom, rgba(62, 39, 35, 0.7) 0%, rgba(62, 39, 35, 0.9) 50%, #3e2723 100%);
+        }
+        .title-font {
+            font-family: 'Cormorant Garamond', serif;
+        }
+        .mood-button {
+            background-color: rgba(93, 64, 55, 0.6); /* Semi-transparent brown */
+            border: 1px solid #a1887f; /* Lighter brown border */
+            color: #d7ccc8;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        .mood-button:hover {
+            background-color: rgba(121, 85, 72, 0.8);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 236, 179, 0.1); /* Soft glow effect */
+        }
+        .mood-button i {
+            margin-bottom: 0.75rem;
+            font-size: 2rem;
+            display: block;
+            color: #ffecb3; /* Pale yellow icons */
+        }
+        .modal-content {
+             background-color: rgba(62, 39, 35, 0.95); /* Dark brown with high opacity */
+             backdrop-filter: blur(10px);
+             -webkit-backdrop-filter: blur(10px);
+             border: 1px solid #a1887f;
+        }
+        .btn-primary {
+             background-color: #8d6e63;
+             color: #ffffff;
+             transition: background-color 0.3s;
+        }
+        .btn-primary:hover {
+            background-color: #a1887f;
+        }
+         .btn-secondary {
+             background-color: #6d4c41;
+             color: #ffffff;
+             transition: background-color 0.3s;
+         }
+        .btn-secondary:hover {
+            background-color: #8d6e63;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #4e342e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #795548;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8d6e63;
+        }
+        #verseDisplayContainer {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="content-wrapper flex flex-col min-h-screen">
+        <header class="text-center py-12 px-4">
+            <h1 class="title-font text-5xl sm:text-7xl font-bold text-amber-100 mb-4 drop-shadow-lg">
+                Penghiburan Firman
+            </h1>
+            <p class="text-lg sm:text-xl text-stone-300 max-w-3xl mx-auto">
+                Temukan kekuatan, penghiburan, dan inspirasi dari firman Tuhan yang sesuai dengan perasaanmu saat ini.
+            </p>
+        </header>
+
+        <main class="flex-grow flex flex-col items-center justify-center p-4">
+            <section id="mood-selection" class="w-full max-w-4xl">
+                <h2 class="title-font text-3xl sm:text-4xl font-semibold text-center text-amber-200 mb-8">Pilih Perasaanmu:</h2>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <button class="mood-button" data-mood="sedih"><i class="fa-solid fa-face-sad-tear"></i>Sedih</button>
+                    <button class="mood-button" data-mood="duka"><i class="fa-solid fa-person-praying"></i>Duka</button>
+                    <button class="mood-button" data-mood="sukacita"><i class="fa-solid fa-face-laugh-beam"></i>Sukacita</button>
+                    <button class="mood-button" data-mood="bahagia"><i class="fa-solid fa-face-grin-stars"></i>Bahagia</button>
+                    <button class="mood-button" data-mood="takut"><i class="fa-solid fa-shield-halved"></i>Takut</button>
+                    <button class="mood-button" data-mood="gentar"><i class="fa-solid fa-water"></i>Gentar</button>
+                    <button class="mood-button" data-mood="cinta"><i class="fa-solid fa-heart"></i>Cinta</button>
+                    <button class="mood-button" data-mood="kasih"><i class="fa-solid fa-hand-holding-heart"></i>Kasih</button>
+                    <button class="mood-button" data-mood="marah"><i class="fa-solid fa-face-angry"></i>Marah</button>
+                    <button class="mood-button" data-mood="murka"><i class="fa-solid fa-bolt"></i>Murka</button>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="text-center py-6 text-stone-400 text-sm">
+            <p>&copy; 2025 Created By Yusuf Imanuel.</p>
+        </footer>
+    </div>
+    
+    <!-- Modal for Verse Display -->
+    <div id="verseDisplayContainer" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="modal-content p-6 sm:p-8 rounded-lg shadow-xl max-w-2xl w-full text-center relative">
+            <button id="closeVerseDisplayBtn" class="absolute top-3 right-4 text-stone-300 hover:text-white text-4xl leading-none focus:outline-none">&times;</button>
+            <p id="verseReference" class="title-font text-2xl sm:text-3xl font-semibold mb-4 text-amber-200"></p>
+            <p id="verseText" class="text-lg sm:text-xl leading-relaxed text-stone-200"></p>
+
+            <div class="mt-8 flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <button id="otherVerseBtn" class="btn-primary w-full sm:w-auto px-6 py-3 font-bold rounded-lg shadow-md">Ayat Lainnya</button>
+                <button id="showExplanationBtn" class="btn-secondary w-full sm:w-auto px-6 py-3 font-bold rounded-lg shadow-md">Tampilkan Penjelasan</button>
+            </div>
+
+            <div id="explanationContainer" class="hidden mt-6 text-left p-4 bg-black bg-opacity-20 rounded-lg max-h-60 overflow-y-auto">
+                <h3 class="title-font text-xl font-semibold text-amber-200 mb-2">Penjelasan:</h3>
+                <p id="explanationText" class="text-stone-300 text-base leading-relaxed mb-4"></p>
+                <h3 class="title-font text-xl font-semibold text-amber-200 mb-2">Pesan Moral:</h3>
+                <p id="moralMessageText" class="text-stone-300 text-base leading-relaxed"></p>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Import Three.js
+        import * as THREE from 'three';
+
+        // --- 3D Scene Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), alpha: true, antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        scene.fog = new THREE.FogExp2(0x3e2723, 0.05); // Fog matches the background color
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(ambientLight);
+
+        const crossLight = new THREE.PointLight(0xffeeb1, 5, 100); // Warm glowing light from the cross
+        crossLight.position.set(0, 0, 2);
+        scene.add(crossLight);
+
+        // --- 3D Objects ---
+        const group = new THREE.Group();
+
+        // 1. Glowing Cross
+        const crossMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffeeb1, 
+            emissive: 0xffeeb1, // Make the cross itself glow
+            emissiveIntensity: 1,
+            metalness: 0.5,
+            roughness: 0.5
+        });
+        const verticalBeam = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 0.5), crossMaterial);
+        const horizontalBeam = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 0.5), crossMaterial);
+        horizontalBeam.position.y = 1;
+        const cross = new THREE.Group();
+        cross.add(verticalBeam, horizontalBeam);
+        group.add(cross);
+
+        // 2. Open Tomb (Geometric Representation)
+        const tombMaterial = new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.8 });
+        const tombWall = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 0.2), tombMaterial);
+        tombWall.position.set(-3, -1.5, -5);
+        const tombSide = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 2), tombMaterial);
+        tombSide.position.set(-5, -1.5, -4);
+        const tombStone = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.2, 32), tombMaterial);
+        tombStone.rotation.x = Math.PI / 2;
+        tombStone.position.set(-1.5, -2, -3.5);
+        const tomb = new THREE.Group();
+        tomb.add(tombWall, tombSide, tombStone);
+        group.add(tomb);
+
+        // 3. Jesus Statue (Stylized Geometric Figure)
+        const statueMaterial = new THREE.MeshStandardMaterial({ color: 0xefebe9, roughness: 0.2, metalness: 0.1 });
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3, 8), statueMaterial);
+        body.position.set(4, -1, -6);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), statueMaterial);
+        head.position.set(4, 1, -6);
+        const jesusStatue = new THREE.Group();
+        jesusStatue.add(body, head);
+        group.add(jesusStatue);
+
+        // 4. Floating Geometric Shapes
+        const geoMaterial = new THREE.MeshStandardMaterial({
+            color: 0xa1887f,
+            transparent: true,
+            opacity: 0.3,
+            roughness: 0.6
+        });
+        const geometries = [
+            new THREE.IcosahedronGeometry(0.5, 0),
+            new THREE.BoxGeometry(0.8, 0.8, 0.8),
+            new THREE.OctahedronGeometry(0.6, 0)
+        ];
+        for (let i = 0; i < 20; i++) {
+            const geo = geometries[Math.floor(Math.random() * geometries.length)];
+            const mesh = new THREE.Mesh(geo, geoMaterial);
+            mesh.position.set(
+                (Math.random() - 0.5) * 20,
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 20 - 5
+            );
+            mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            group.add(mesh);
+        }
+        
+        scene.add(group);
+        camera.position.z = 5;
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsedTime = clock.getElapsedTime();
+            
+            // Subtle rotation and movement
+            group.rotation.y = elapsedTime * 0.25;
+            
+            // Make light pulsate
+            crossLight.intensity = 4 + Math.sin(elapsedTime * 2) * 30;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- Window Resize ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+
+        // --- Alkitab Content Logic (Preserved from original) ---
+        const verses = {
+            sedih: [
+                {
+                    ref: "Markus 14:19",
+                    text: "Maka sedihlah hati mereka dan seorang demi seorang berkata kepada-Nya: 'Bukan aku, ya Tuhan?'",
+                    explanation: "Ayat ini menceritakan bagaimana para murid Yesus merasa sangat sedih setelah mendengar bahwa salah satu di antara mereka akan mengkhianati Yesus.",
+                    moralMessage: "Kita harus selalu introspeksi diri, jangan cepat menyalahkan orang lain, dan tetap rendah hati. Kesedihan yang dirasakan para murid menunjukkan empati dan ketulusan hati."
+                },
+                {
+                    ref: "Lukas 22:62",
+                    text: "Lalu ia pergi ke luar dan menangis dengan sedihnya.",
+                    explanation: "Ayat ini menceritakan Petrus yang setelah menyangkal Yesus, pergi ke luar dan menangis dengan sangat sedih. Ini menunjukkan penyesalan mendalam atas kesalahan yang diperbuat.",
+                    moralMessage: "Penyesalan dan tangisan atas kesalahan adalah awal dari pertobatan. Kita harus berani mengakui kesalahan dan berusaha memperbaiki diri."
+                },
+                {
+                    ref: "Mazmur 34:18",
+                    text: "TUHAN itu dekat kepada orang-orang yang patah hati, dan Ia menyelamatkan orang-orang yang remuk jiwanya.",
+                    explanation: "Pemazmur menyatakan bahwa Tuhan hadir secara khusus bagi mereka yang sedang menderita kesedihan dan keputusasaan.",
+                    moralMessage: "Di saat hati kita hancur karena kesedihan, ingatlah bahwa Tuhan tidak jauh. Dia ada di sana untuk memberi kekuatan dan penyembuhan."
+                }
+            ],
+            duka: [
+                 {
+                    ref: "Pengkhotbah 7:2",
+                    text: "Pergi ke rumah duka lebih baik dari pada pergi ke rumah pesta, karena di sanalah kesudahan setiap manusia; hendaknya orang yang hidup memperhatikannya.",
+                    explanation: "Ayat ini menasehati bahwa lebih baik pergi ke rumah duka daripada ke rumah pesta, karena di rumah duka kita diingatkan tentang akhir kehidupan setiap manusia. Ini mengajak kita untuk menyadari kefanaan hidup dan pentingnya introspeksi diri.",
+                    moralMessage: "Kita harus selalu mengingat bahwa hidup ini sementara. Menghadiri rumah duka mengajarkan kita untuk rendah hati, bersyukur, dan memanfaatkan waktu hidup dengan bijak."
+                },
+                {
+                    ref: "Mazmur 119:28",
+                    text: "Jiwaku menangis karena duka hati; teguhkanlah aku sesuai dengan firman-Mu.",
+                    explanation: "Pemazmur mengungkapkan bahwa jiwanya menangis karena duka hati, dan memohon agar Tuhan meneguhkan dia sesuai firman-Nya.",
+                    moralMessage: "Di saat duka dan kelemahan, firman Tuhan adalah sumber kekuatan dan penghiburan. Kita harus selalu mencari Tuhan dan firman-Nya untuk mendapatkan keteguhan hati."
+                },
+                 {
+                    ref: "Matius 5:4",
+                    text: "Berbahagialah orang yang berdukacita, karena mereka akan dihibur.",
+                    explanation: "Yesus menyatakan bahwa orang yang berdukacita akan berbahagia karena mereka akan dihibur.",
+                    moralMessage: "Kesedihan bukan akhir dari segalanya. Tuhan memberikan penghiburan bagi mereka yang berdukacita dan mencari-Nya."
+                }
+            ],
+            sukacita: [
+                {
+                    ref: "Filipi 4:4",
+                    text: "Bersukacitalah senantiasa dalam Tuhan! Sekali lagi kukatakan: Bersukacitalah!",
+                    explanation: "Paulus menekankan pentingnya bersukacita senantiasa dalam Tuhan, bahkan sampai diulang dua kali untuk menegaskan pesannya.",
+                    moralMessage: "Sukacita sejati berasal dari Tuhan dan tidak tergantung pada keadaan luar. Kita diajak untuk tetap bersukacita di segala situasi."
+                },
+                {
+                    ref: "Yohanes 15:11",
+                    text: "Semuanya itu Kukatakan kepadamu, supaya sukacita-Ku ada di dalam kamu dan sukacitamu menjadi penuh.",
+                    explanation: "Yesus berkata bahwa Ia mengajarkan segala sesuatu agar sukacita-Nya ada di dalam murid-murid dan sukacita mereka menjadi penuh.",
+                    moralMessage: "Sukacita Yesus adalah sukacita yang sejati dan abadi. Dengan mengikuti ajaran-Nya, kita akan merasakan sukacita yang penuh dan tulus."
+                },
+                {
+                    ref: "Roma 12:15",
+                    text: "Bersukacitalah dengan orang yang bersukacita, dan menangislah dengan orang yang menangis!",
+                    explanation: "Paulus mengajak untuk bersukacita dengan orang yang bersukacita dan menangis dengan orang yang menangis.",
+                    moralMessage: "Empati dan kebersamaan sangat penting. Kita harus berbagi sukacita dan dukacita dengan sesama."
+                }
+            ],
+            bahagia: [
+                {
+                    ref: "Mazmur 144:15",
+                    text: "Berbahagialah bangsa yang demikian keadaannya! Berbahagialah bangsa yang Allahnya ialah TUHAN!",
+                    explanation: "Ayat ini memberkati bangsa yang menjadikan Tuhan sebagai Allahnya. Kebahagiaan sejati terletak pada bangsa yang hidup dalam kebenaran dan takut akan Tuhan.",
+                    moralMessage: "Kebahagiaan dan keberkahan sejati hanya datang dari Tuhan. Bangsa yang hidup dalam kebenaran dan menjadikan Tuhan sebagai pusat hidup akan diberkati dan bahagia."
+                },
+                {
+                    ref: "Matius 5:8",
+                    text: "Berbahagialah orang yang suci hatinya, karena mereka akan melihat Allah.",
+                    explanation: "Yesus mengatakan bahwa orang yang suci hatinya akan berbahagia karena mereka akan melihat Allah.",
+                    moralMessage: "Kesucian hati adalah kunci untuk mengalami kehadiran Tuhan. Kita harus menjaga hati agar tetap bersih dan tulus."
+                },
+                {
+                    ref: "Amsal 3:13",
+                    text: "Berbahagialah orang yang mendapat hikmat, orang yang memperoleh kepandaian.",
+                    explanation: "Kitab Amsal mengajarkan bahwa kebahagiaan sejati ditemukan dalam hikmat dan pengertian, yang nilainya melebihi perak atau emas.",
+                    moralMessage: "Carilah hikmat dari Tuhan lebih dari kekayaan duniawi, karena hikmat akan membimbing kita menuju kehidupan yang benar dan memuaskan."
+                }
+            ],
+            takut: [
+                {
+                    ref: "Yohanes 6:20",
+                    text: "Tetapi Ia berkata kepada mereka: “Aku ini, jangan takut!”",
+                    explanation: "Yesus berkata kepada para murid-Nya di tengah badai, “Aku ini, jangan takut!” Ini menunjukkan bahwa di tengah ketakutan dan ketidakpastian, kehadiran Yesus memberikan rasa aman dan ketenangan.",
+                    moralMessage: "Ketika hidup terasa menakutkan atau tidak pasti, ingatlah bahwa Yesus selalu ada di samping kita. Kehadiran-Nya mampu menenangkan hati dan mengusir ketakutan."
+                },
+                {
+                    ref: "1 Yohanes 4:18",
+                    text: "Di dalam kasih tidak ada ketakutan: kasih yang sempurna melenyapkan ketakutan; sebab ketakutan mengandung hukuman dan barangsiapa takut, ia tidak sempurna di dalam kasih.",
+                    explanation: "Ayat ini mengajarkan bahwa kasih yang sempurna melenyapkan ketakutan. Ketakutan sering muncul karena kekhawatiran akan hukuman atau masa depan yang tidak pasti.",
+                    moralMessage: "Kasih adalah kekuatan terbesar untuk mengatasi rasa takut. Saat kita mengasihi dan dikasihi—baik oleh Tuhan maupun sesama—kita menjadi lebih berani."
+                },
+                {
+                    ref: "Yosua 1:9",
+                    text: "Bukankah telah Kuperintahkan kepadamu: kuatkan dan teguhkanlah hatimu? Janganlah kecut dan tawar hati, sebab TUHAN, Allahmu, menyertai engkau, ke mana pun engkau pergi.",
+                    explanation: "Ini adalah perintah Tuhan kepada Yosua sebelum memimpin bangsa Israel masuk ke Tanah Perjanjian, sebuah tugas yang menakutkan. Tuhan meyakinkannya akan penyertaan-Nya.",
+                    moralMessage: "Keberanian tidak berarti tidak adanya rasa takut, tetapi tetap maju meskipun takut, karena percaya pada penyertaan Tuhan."
+                }
+            ],
+            gentar: [
+                {
+                    ref: "Yeremia 1:17",
+                    text: "Tetapi engkau ini, baiklah engkau bersiap, bangkitlah dan sampaikanlah kepada mereka segala yang Kuperintahkan kepadamu. Janganlah gentar terhadap mereka, supaya jangan Aku menggentarkan engkau di depan mereka!",
+                    explanation: "Tuhan meminta Yeremia untuk tidak gentar terhadap orang-orang yang akan dihadapinya, agar Tuhan tidak perlu menggentarkan Yeremia di depan mereka.",
+                    moralMessage: "Tuhan ingin kita berani dan tidak mudah gentar menghadapi tantangan. Jika kita percaya pada penyertaan Tuhan, kita akan diberi kekuatan untuk berdiri teguh."
+                },
+                {
+                    ref: "Mazmur 34:4",
+                    text: "Aku telah mencari TUHAN, lalu Ia menjawab aku, dan melepaskan aku dari segala kegentaranku.",
+                    explanation: "Pemazmur mencari Tuhan dan Tuhan menjawab serta melepaskannya dari segala kegentarannya.",
+                    moralMessage: "Tuhan selalu siap menolong dan memberikan ketenangan di tengah kegentaran. Mencari Tuhan adalah solusi terbaik saat kita merasa takut."
+                },
+                {
+                    ref: "Yesaya 41:10",
+                    text: "janganlah takut, sebab Aku menyertai engkau, janganlah bimbang, sebab Aku ini Allahmu; Aku akan meneguhkan, bahkan akan menolong engkau; Aku akan memegang engkau dengan tangan kanan-Ku yang membawa kemenangan.",
+                    explanation: "Tuhan memberikan janji penyertaan, kekuatan, dan pertolongan kepada umat-Nya yang merasa takut atau gentar.",
+                    moralMessage: "Rasa gentar dapat diatasi dengan mengingat janji Tuhan. Dia tidak hanya menyertai, tetapi juga secara aktif menolong dan memberikan kemenangan."
+                }
+            ],
+            cinta: [
+                {
+                    ref: "2 Samuel 1:26",
+                    text: "Merasa susah aku karena engkau, saudaraku Yonatan, engkau sangat ramah kepadaku; bagiku cintamu lebih ajaib dari pada cinta perempuan.",
+                    explanation: "Daud mengungkapkan kesedihan mendalam atas kematian Yonatan dan menyebut cinta Yonatan kepadanya lebih ajaib daripada cinta perempuan.",
+                    moralMessage: "Persahabatan yang tulus dan saling mencintai adalah berkat yang sangat indah. Kasih persaudaraan bisa melebihi kasih romantis dalam kehangatan dan kesetiaan."
+                },
+                {
+                    ref: "Kidung Agung 8:7",
+                    text: "Air yang banyak tak dapat memadamkan cinta, sungai-sungai tak dapat menghanyutkannya. Sekalipun orang memberi segala harta benda rumahnya untuk cinta, namun ia pasti akan dihina.",
+                    explanation: "Ayat ini menggambarkan kekuatan cinta yang tak bisa dipadamkan oleh air yang banyak atau dihanyutkan oleh sungai-sungai. Cinta tidak bisa dibeli dengan harta.",
+                    moralMessage: "Cinta sejati adalah kuat, abadi, dan tidak bisa diukur dengan materi. Cinta yang tulus tidak bisa dipaksa atau dibeli."
+                },
+                 {
+                    ref: "1 Korintus 13:4-5",
+                    text: "Kasih itu sabar; kasih itu murah hati; ia tidak cemburu. Ia tidak memegahkan diri dan tidak sombong. Ia tidak melakukan yang tidak sopan dan tidak mencari keuntungan diri sendiri. Ia tidak pemarah dan tidak menyimpan kesalahan orang lain.",
+                    explanation: "Paulus mendefinisikan sifat-sifat dari cinta sejati (agape), yang berpusat pada pengorbanan, kesabaran, dan kebaikan.",
+                    moralMessage: "Cinta bukanlah sekadar perasaan, tetapi serangkaian tindakan dan sikap. Kita dipanggil untuk mempraktikkan cinta yang sabar, murah hati, dan tidak egois."
+                }
+            ],
+            kasih: [
+                {
+                    ref: "Roma 13:10",
+                    text: "Kasih tidak berbuat jahat terhadap sesama manusia, karena itu kasih adalah kegenapan hukum Taurat.",
+                    explanation: "Kasih tidak berbuat jahat terhadap sesama manusia, sehingga kasih adalah kegenapan hukum Taurat.",
+                    moralMessage: "Kasih adalah inti dari segala perintah Tuhan. Jika kita mengasihi sesama, kita sudah memenuhi seluruh hukum. Kasih melindungi kita dari berbuat jahat."
+                },
+                {
+                    ref: "1 Yohanes 4:16",
+                    text: "Kita telah mengenal dan telah percaya akan kasih Allah kepada kita. Allah adalah kasih, dan barangsiapa tetap berada di dalam kasih, ia tetap berada di dalam Allah dan Allah di dalam dia.",
+                    explanation: "Kita telah mengenal dan telah percaya akan kasih Allah kepada kita. Allah adalah kasih, dan barangsiapa tetap berada di dalam kasih, ia tetap berada di dalam Allah dan Allah di dalam dia.",
+                    moralMessage: "Kasih Allah adalah sumber hidup kita. Jika kita hidup dalam kasih, maka Allah hadir dalam hidup kita. Kasih adalah inti dari kehidupan Kristen."
+                },
+                 {
+                    ref: "Yohanes 3:16",
+                    text: "Karena begitu besar kasih Allah akan dunia ini, sehingga Ia telah mengaruniakan Anak-Nya yang tunggal, supaya setiap orang yang percaya kepada-Nya tidak binasa, melainkan beroleh hidup yang kekal.",
+                    explanation: "Ini adalah salah satu ayat paling terkenal yang merangkum inti dari Injil: kasih Allah yang luar biasa bagi umat manusia, yang diwujudkan melalui pengorbanan Yesus.",
+                    moralMessage: "Ukuran kasih Allah tidak terhingga, dan respon kita yang seharusnya adalah percaya kepada Yesus untuk menerima karunia hidup kekal."
+                }
+            ],
+            marah: [
+                {
+                    ref: "Mazmur 37:8",
+                    text: "Berhentilah marah dan tinggalkanlah panas hati itu, jangan marah, itu hanya membawa kepada kejahatan.",
+                    explanation: "Ayat ini menasehati untuk berhenti marah dan meninggalkan panas hati, karena marah hanya membawa kepada kejahatan.",
+                    moralMessage: "Marah yang tidak terkendali dapat menyebabkan perbuatan jahat. Kita harus belajar mengendalikan emosi agar tidak jatuh ke dalam dosa dan merusak hubungan dengan sesama."
+                },
+                {
+                    ref: "Yunus 4:4",
+                    text: "Tetapi firman TUHAN: “Layakkah engkau marah?”",
+                    explanation: "Tuhan bertanya kepada Yunus apakah ia layak marah, menunjukkan bahwa kemarahan Yunus tidak beralasan di hadapan Tuhan.",
+                    moralMessage: "Kemarahan yang tidak beralasan atau tidak terkendali tidaklah benar. Kita harus introspeksi diri sebelum marah dan meminta hikmat dari Tuhan."
+                },
+                 {
+                    ref: "Efesus 4:26",
+                    text: "Apabila kamu menjadi marah, janganlah kamu berbuat dosa: janganlah matahari terbenam, sebelum padam amarahmu.",
+                    explanation: "Paulus mengakui bahwa marah adalah emosi yang wajar, tetapi ia memberi batasan: kemarahan tidak boleh menuntun kepada dosa dan harus diselesaikan dengan cepat.",
+                    moralMessage: "Kelola amarahmu dengan bijak. Jangan biarkan ia berlarut-larut hingga menjadi akar kepahitan. Selesaikan konflik sebelum hari berakhir."
+                }
+            ],
+            murka: [
+                {
+                    ref: "Mazmur 85:5",
+                    text: "Untuk selamanyakah Engkau murka atas kami dan melanjutkan murka-Mu turun-temurun?",
+                    explanation: "Ayat ini berisi permohonan kepada Tuhan agar tidak terus-menerus murka kepada umat-Nya, dan tidak melanjutkan murka-Nya turun-temurun.",
+                    moralMessage: "Kita harus menyadari bahwa murka Tuhan tidak selamanya, dan ada harapan untuk pengampunan jika umat bertobat dan memohon belas kasihan-Nya."
+                },
+                {
+                    ref: "Roma 2:5",
+                    text: "Tetapi oleh kekerasan hatimu yang tidak mau bertobat, engkau menimbun murka atas dirimu sendiri pada hari waktu mana murka dan hukuman Allah yang adil akan dinyatakan.",
+                    explanation: "Kekerasan hati dan ketidakmauan bertobat menyebabkan seseorang menimbun murka Tuhan atas dirinya sendiri, yang akan dinyatakan pada hari penghakiman.",
+                    moralMessage: "Kita harus bertobat dan tidak mengeraskan hati, agar tidak menimbun murka Tuhan atas diri kita sendiri."
+                },
+                {
+                    ref: "Nahum 1:2",
+                    text: "TUHAN itu Allah yang cemburu dan pembalas, TUHAN itu pembalas dan penuh kehangatan amarah. TUHAN itu pembalas kepada para lawan-Nya dan pendendam kepada para musuh-Nya.",
+                    explanation: "Nabi Nahum menggambarkan Tuhan sebagai hakim yang adil yang murka terhadap kejahatan dan ketidakadilan.",
+                    moralMessage: "Murka Tuhan bukanlah amarah yang tidak terkendali, melainkan respons suci-Nya terhadap dosa. Ini seharusnya memberi kita penghiburan bahwa kejahatan tidak akan dibiarkan selamanya."
+                }
+            ]
+        };
+
+        const moodButtons = document.querySelectorAll('.mood-button');
+        const verseDisplayContainer = document.getElementById('verseDisplayContainer');
+        const verseReferenceElem = document.getElementById('verseReference');
+        const verseTextElem = document.getElementById('verseText');
+        const otherVerseBtn = document.getElementById('otherVerseBtn');
+        const closeVerseDisplayBtn = document.getElementById('closeVerseDisplayBtn');
+        const showExplanationBtn = document.getElementById('showExplanationBtn');
+        const explanationContainer = document.getElementById('explanationContainer');
+        const explanationTextElem = document.getElementById('explanationText');
+        const moralMessageTextElem = document.getElementById('moralMessageText');
+
+        let currentMood = null;
+        let currentVerse = null;
+
+        function getRandomVerse(mood) {
+            const moodVerses = verses[mood];
+            if (moodVerses && moodVerses.length > 0) {
+                const randomIndex = Math.floor(Math.random() * moodVerses.length);
+                return moodVerses[randomIndex];
+            }
+            return null;
+        }
+
+        function displayVerse(mood) {
+            currentMood = mood;
+            const verse = getRandomVerse(mood);
+            if (verse) {
+                currentVerse = verse;
+                verseReferenceElem.textContent = verse.ref;
+                verseTextElem.textContent = verse.text;
+                verseDisplayContainer.classList.remove('hidden');
+                explanationContainer.classList.add('hidden'); 
+            } else {
+                alert(`Maaf, belum ada ayat yang tersedia untuk mood "${mood}".`);
+            }
+        }
+
+        moodButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const mood = button.dataset.mood;
+                if (mood) {
+                    displayVerse(mood);
+                }
+            });
+        });
+
+        otherVerseBtn.addEventListener('click', () => {
+            if (currentMood) {
+                displayVerse(currentMood); // Simply get a new random verse for the same mood
+            }
+        });
+
+        closeVerseDisplayBtn.addEventListener('click', () => {
+            verseDisplayContainer.classList.add('hidden');
+            explanationContainer.classList.add('hidden');
+        });
+
+        showExplanationBtn.addEventListener('click', () => {
+            if (currentVerse && currentVerse.explanation && currentVerse.moralMessage) {
+                if (explanationContainer.classList.contains('hidden')) {
+                    explanationTextElem.textContent = currentVerse.explanation;
+                    moralMessageTextElem.textContent = currentVerse.moralMessage;
+                    explanationContainer.classList.remove('hidden');
+                } else {
+                    explanationContainer.classList.add('hidden');
+                }
+            } else {
+                alert("Penjelasan untuk ayat ini belum tersedia.");
+            }
+        });
+    </script>
+</body>
+</html>
